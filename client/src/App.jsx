@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage';
 import GymRegister from './pages/GymRegister';
 import ClientRegister from './pages/ClientRegister';
 import RegistrationSuccess from './pages/RegistrationSuccess';
+import LandingPage from './pages/LandingPage';
 
 // Owner
 import OwnerLayout from './layouts/OwnerLayout';
@@ -45,7 +46,7 @@ const App = () => {
       <Router>
         <div className="bg-dark min-h-screen text-slate-200">
           <Routes>
-            <Route path="/" element={<Navigate to="/login" />} />
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register/gym" element={<GymRegister />} />
             <Route path="/register/client" element={<ClientRegister />} />
