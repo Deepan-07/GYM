@@ -23,7 +23,8 @@ const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
-    
+    console.log("Connected DB:", mongoose.connection.name);
+
     // Seed Super Admin on first run
     await seedSuperAdmin();
   } catch (error) {

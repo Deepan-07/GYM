@@ -14,73 +14,79 @@ const statusStyles = {
 const ClientCard = ({ client, onView, onDelete, onRenew, showRenew = false }) => {
   const name = client?.personalInfo?.name || 'Client';
   const avatarText = client?.avatar || name.charAt(0).toUpperCase();
-  const durationText = client?.membership?.durationDays ? `${client.membership.durationDays} Days` : 'N/A';
   const status = client?.membership?.status || 'pending';
   const dynamicDaysLeft = calculateDaysLeft(client?.membership?.endDate);
   const daysLeft = dynamicDaysLeft ?? client?.membership?.daysLeft ?? '-';
 
   return (
-    <div className="card bg-gray-900 border-gray-800 hover:border-gray-700 hover:-translate-y-0.5 transition-all duration-200">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex gap-4 xl:min-w-[240px]">
-          <div className="w-12 h-12 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center text-lg font-bold shrink-0">
+    <div className="bg-gray-900 border-b border-gray-800 hover:bg-gray-800/50 hover:shadow-sm transition-all duration-200 px-4 py-3">
+      <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_2fr_1fr_1fr_1fr] gap-4 md:gap-2 items-center text-sm">
+        
+        {/* Client Info */}
+        <div className="flex gap-3 items-center min-w-0">
+          <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold shrink-0">
             {avatarText}
           </div>
-
-          <div className="space-y-1 min-w-0">
-            <div>
-              <h3 className="text-lg font-semibold text-white truncate">{name}</h3>
-              <p className="text-sm text-gray-400 break-words">{client?.clientId || 'Pending ID'}</p>
-            </div>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-white truncate">{name}</h3>
+            <p className="text-xs text-gray-400 truncate">{client?.clientId || 'Pending ID'}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4 flex-1 text-sm">
-          <div>
-            <p className="text-gray-500 uppercase tracking-wide text-[11px] mb-1">Mobile</p>
-            <p className="text-white">{client?.personalInfo?.mobileNo || '-'}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 uppercase tracking-wide text-[11px] mb-1">Plan</p>
-            <p className="text-white">{client?.membership?.planName || 'N/A'}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 uppercase tracking-wide text-[11px] mb-1">Start</p>
-            <p className="text-white">{formatDisplayDate(client?.membership?.startDate)}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 uppercase tracking-wide text-[11px] mb-1">{showRenew ? 'Expired On' : 'End'}</p>
-            <p className="text-white">{formatDisplayDate(client?.membership?.endDate)}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 uppercase tracking-wide text-[11px] mb-1">Days Left</p>
-            <p className="text-white">{daysLeft}</p>
-          </div>
-          <div className="flex items-end">
-            <div className="w-full">
-              <p className="text-gray-500 uppercase tracking-wide text-[11px] mb-1">Status</p>
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase w-fit ${statusStyles[status] || statusStyles.pending}`}>
-                {status.replace('_', ' ')}
-              </span>
-            </div>
+        {/* Mobile */}
+        <div className="flex items-center md:block">
+          <span className="w-24 md:hidden text-gray-500 text-xs font-semibold uppercase">Mobile: </span>
+          <p className="text-white truncate">{client?.personalInfo?.mobileNo || '-'}</p>
+        </div>
+
+        {/* Plan */}
+        <div className="flex items-center md:block">
+          <span className="w-24 md:hidden text-gray-500 text-xs font-semibold uppercase">Plan: </span>
+          <p className="text-white truncate">{client?.membership?.planName || 'N/A'}</p>
+        </div>
+
+        {/* Duration */}
+        <div className="flex md:flex-col items-center md:items-start gap-2 md:gap-0">
+          <span className="w-24 md:hidden text-gray-500 text-xs font-semibold uppercase">Duration: </span>
+          <div className="flex flex-col">
+            <p className="text-gray-300 text-xs text-nowrap">Start: {formatDisplayDate(client?.membership?.startDate)}</p>
+            <p className="text-gray-300 text-xs text-nowrap">End: {formatDisplayDate(client?.membership?.endDate)}</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 xl:justify-end shrink-0">
-          <Button type="button" variant="secondary" onClick={() => onView?.(client)} className="!px-3 !py-2 text-sm">
-            <Eye size={15} /> View
+        {/* Days Left */}
+        <div className="flex items-center md:block">
+          <span className="w-24 md:hidden text-gray-500 text-xs font-semibold uppercase">Days Left: </span>
+          <p className="text-white font-medium">{daysLeft}</p>
+        </div>
+
+        {/* Status */}
+        <div className="flex items-center md:block">
+          <span className="w-24 md:hidden text-gray-500 text-xs font-semibold uppercase">Status: </span>
+          <div>
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase whitespace-nowrap ${statusStyles[status] || statusStyles.pending}`}>
+              {status.replace('_', ' ')}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2 justify-start md:justify-end shrink-0 mt-2 md:mt-0">
+          <Button type="button" variant="secondary" onClick={() => onView?.(client)} className="!px-3 !py-1.5 text-xs">
+            <Eye size={14} /> View
           </Button>
 
           {showRenew ? (
-            <Button type="button" variant="secondary" onClick={() => onRenew?.(client)} className="!px-3 !py-2 text-sm border-red-500/20 hover:border-red-400">
-              <RefreshCw size={15} /> Renew
+            <Button type="button" variant="secondary" onClick={() => onRenew?.(client)} className="!px-3 !py-1.5 text-xs border-red-500/20 hover:border-red-400">
+              <RefreshCw size={14} /> Renew
             </Button>
           ) : (
-            <Button type="button" variant="secondary" onClick={() => onDelete?.(client)} className="!px-3 !py-2 text-sm border-red-500/20 hover:border-red-400 text-red-300">
-              <Trash2 size={15} /> Delete
+            <Button type="button" variant="secondary" onClick={() => onDelete?.(client)} className="!px-3 !py-1.5 text-xs text-red-400 border-red-500/20 hover:border-red-400 hover:text-red-300">
+              <Trash2 size={14} /> Delete
             </Button>
           )}
         </div>
+        
       </div>
     </div>
   );
