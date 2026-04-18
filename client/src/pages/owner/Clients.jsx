@@ -114,7 +114,7 @@ const Clients = () => {
                             <option value="active">Active</option>
                             <option value="expiring_soon">Expiring Soon</option>
                             <option value="expired">Expired</option>
-                            <option value="red_tag">Red Tag</option>
+                            <option value="overdue">Overdue</option>
                             <option value="pending">Pending</option>
                         </select>
                     </div>

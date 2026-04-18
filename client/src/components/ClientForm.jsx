@@ -16,13 +16,24 @@ const getValidationSchema = (mode) => yup.object({
   name: yup.string().trim().required('Name is required'),
   gender: yup.string().required('Gender is required'),
   email: yup.string().trim().email('Please enter a valid email address').required('Email is required'),
-  dob: yup.string().required('Date of birth is required'),
+  dob: yup.date().required('Date of birth is required').test('age', 'Must be at least 14 years old', function(value) {
+     if (!value) return false;
+     const age = new Date().getFullYear() - new Date(value).getFullYear();
+     return age >= 14;
+  }),
   mobileNo: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError),
-  address: yup.string().trim().required('Address is required'),
-  emergencyContact: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError),
+  address: yup.string().trim().required('Address is required').max(200, 'Max 200 limit'),
+  emergencyContact: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError).notOneOf([yup.ref('mobileNo')], 'Must be different from Mobile Number'),
   medicalCondition: yup.string().trim().nullable(),
   planId: yup.string().required('Please select a plan'),
-  startDate: yup.string().required('Start date is required'),
+  startDate: yup.date().required('Start date is required').test('is-today-or-future', 'Start date cannot be in the past', function(value) {
+    if (!value) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(value);
+    selectedDate.setHours(0, 0, 0, 0);
+    return selectedDate >= today;
+  }),
   password: ['self', 'owner'].includes(mode)
     ? yup.string().min(8, passwordError).matches(/^(?=.*[A-Z])(?=.*\d).+$/, passwordError).required(passwordError)
     : yup.string().nullable(),
@@ -186,7 +197,49 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false }) 
     const isValid = await trigger(selfStepOneFields);
 
     if (isValid) {
-      setStep(2);
+      setLoading(true);
+      try {
+         await api.post('/auth/check-exists', { email: values.email, phone: values.mobileNo });
+         setStep(2);
+      } catch(err) {
+         if (err.response?.status === 409) {
+            toast.error(err.response.data.message);
+            if (err.response.data.message.toLowerCase().includes('email')) {
+               setError('email', { type: 'manual', message: 'Email already exists' });
+            } else {
+               setError('mobileNo', { type: 'manual', message: 'Phone number already exists' });
+            }
+         }
+      } finally {
+         setLoading(false);
+      }
+    } else {
+      toast.error('Please fix errors to proceed.');
+    }
+  };
+
+  const handleOwnerSubmit = async () => {
+    const isValid = await trigger(ownerRequiredFields);
+    
+    if (isValid) {
+       setLoading(true);
+       try {
+          // Additional check for owner adding client
+          await api.post('/auth/check-exists', { email: values.email, phone: values.mobileNo });
+          handleSubmit(onSubmit)();
+       } catch (err) {
+          if (err.response?.status === 409) {
+             toast.error(err.response.data.message);
+             if (err.response.data.message.toLowerCase().includes('email')) {
+                setError('email', { type: 'manual', message: 'Email already exists' });
+             } else {
+                setError('mobileNo', { type: 'manual', message: 'Phone number already exists' });
+             }
+          }
+          setLoading(false);
+       }
+    } else {
+       toast.error('Please fix the highlighted errors before submitting.');
     }
   };
 
@@ -271,13 +324,13 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false }) 
 
       <div>
         <p className="text-xs text-gray-400 mb-1">Mobile Number</p>
-        <input {...register('mobileNo')} placeholder="10-digit mobile number" className={fieldClassName('mobileNo')} />
+        <input {...register('mobileNo')} type="number" placeholder="10-digit mobile number" className={fieldClassName('mobileNo')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
         {showFieldError('mobileNo') && <p className="text-red-500 text-xs mt-1">{errors.mobileNo.message}</p>}
       </div>
 
       <div>
         <p className="text-xs text-gray-400 mb-1">Emergency Contact</p>
-        <input {...register('emergencyContact')} placeholder="10-digit emergency contact" className={fieldClassName('emergencyContact')} />
+        <input {...register('emergencyContact')} type="number" placeholder="10-digit emergency contact" className={fieldClassName('emergencyContact')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
         {showFieldError('emergencyContact') && <p className="text-red-500 text-xs mt-1">{errors.emergencyContact.message}</p>}
       </div>
 
@@ -331,7 +384,7 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false }) 
 
       <div>
         <p className="text-xs text-gray-400 mb-1">Membership Start Date</p>
-        <input {...register('startDate')} type="date" className={fieldClassName('startDate', 'text-gray-300')} />
+        <input {...register('startDate')} min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]} type="date" className={fieldClassName('startDate', 'text-gray-300')} />
         {showFieldError('startDate') && <p className="text-red-500 text-xs mt-1">{errors.startDate.message}</p>}
       </div>
 
@@ -372,11 +425,11 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false }) 
         )}
 
         {!isOwner && step === 1 ? (
-          <Button type="button" onClick={handleNextStep} className="ml-auto" disabled={selfStepOneDisabled}>
+          <Button type="button" onClick={handleNextStep} className="ml-auto" isLoading={loading}>
             Next
           </Button>
         ) : (
-          <Button type="submit" isLoading={loading} className="ml-auto w-full md:w-auto" disabled={submitDisabled}>
+          <Button type="button" isLoading={loading} className="ml-auto w-full md:w-auto" onClick={isOwner ? handleOwnerSubmit : () => { handleSubmit(onSubmit)() }}>
             {isOwner ? 'Add Client' : 'Submit Membership Request'}
           </Button>
         )}

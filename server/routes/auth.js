@@ -25,10 +25,8 @@ const gymRegisterValidation = [
   })
 ];
 
-const gymLoginValidation = [
-  body('gymId', 'Gym ID is required').notEmpty(),
-  body('gymName', 'Gym Name is required').notEmpty(),
-  body('phone', 'Phone is required').notEmpty(),
+const universalLoginValidation = [
+  body('loginId', 'Email or Phone is required').notEmpty(),
   body('password', 'Password is required').notEmpty()
 ];
 
@@ -49,27 +47,12 @@ const clientRegisterValidation = [
   })
 ];
 
-const clientLoginValidation = [
-  body('gymId').notEmpty(),
-  body('gymName').notEmpty(),
-  body('clientId').notEmpty(),
-  body('mobileNo').notEmpty(),
-  body('password').notEmpty()
-];
-
-// Admin Validations
-const adminLoginValidation = [
-  body('email').isEmail(),
-  body('password').exists()
-];
-
 // Routes
+router.post('/check-exists', authController.checkExists);
+
 router.post('/gym/register', uploadLogo.single('logo'), gymRegisterValidation, validate, authController.registerGymOwner);
-router.post('/gym/login', gymLoginValidation, validate, authController.loginGymOwner);
-
 router.post('/client/register', clientRegisterValidation, validate, authController.registerClient);
-router.post('/client/login', clientLoginValidation, validate, authController.loginClient);
 
-router.post('/admin/login', adminLoginValidation, validate, authController.loginAdmin);
+router.post('/login', universalLoginValidation, validate, authController.universalLogin);
 
 module.exports = router;

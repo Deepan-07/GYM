@@ -12,7 +12,13 @@ export const formatDisplayDate = (value) => {
   return date.toLocaleDateString('en-GB').replace(/\//g, '-');
 };
 
-export const calculateDaysLeft = (endDateValue) => {
+export const calculateDaysLeft = (startDateValue, endDateValue) => {
+  // Overload: if only 1 param passed, treat as endDateValue
+  if (!endDateValue) {
+    endDateValue = startDateValue;
+    startDateValue = null;
+  }
+
   if (!endDateValue) {
     return null;
   }
@@ -27,5 +33,19 @@ export const calculateDaysLeft = (endDateValue) => {
     return null;
   }
 
-  return Math.floor((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (startDateValue) {
+    const startDate = new Date(startDateValue);
+    startDate.setHours(0, 0, 0, 0);
+    
+    if (!Number.isNaN(startDate.getTime()) && today.getTime() < startDate.getTime()) {
+      const diffDays = Math.ceil((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return `Starts in ${diffDays} days`;
+    }
+  }
+
+  if (today.getTime() > endDate.getTime()) {
+    return 0;
+  }
+
+  return Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 };

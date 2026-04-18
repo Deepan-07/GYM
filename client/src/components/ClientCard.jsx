@@ -7,7 +7,7 @@ const statusStyles = {
   active: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
   expiring_soon: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
   expired: 'bg-orange-500/10 text-orange-400 border border-orange-500/20',
-  red_tag: 'bg-red-500/10 text-red-400 border border-red-500/20',
+  overdue: 'bg-red-500/10 text-red-400 border border-red-500/20',
   pending: 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
 };
 
@@ -15,8 +15,10 @@ const ClientCard = ({ client, onView, onDelete, onRenew, showRenew = false }) =>
   const name = client?.personalInfo?.name || 'Client';
   const avatarText = client?.avatar || name.charAt(0).toUpperCase();
   const status = client?.membership?.status || 'pending';
-  const dynamicDaysLeft = calculateDaysLeft(client?.membership?.endDate);
-  const daysLeft = dynamicDaysLeft ?? client?.membership?.daysLeft ?? '-';
+  const dynamicDaysLeft = calculateDaysLeft(client?.membership?.startDate, client?.membership?.endDate);
+  // If the plan is upcoming, dynamicDaysLeft is a string "Starts in X days"
+  // If it's active but we prefer dynamic over snapshot, use dynamicDaysLeft
+  const daysLeft = dynamicDaysLeft !== null ? dynamicDaysLeft : (client?.membership?.daysLeft ?? '-');
 
   return (
     <div className="bg-gray-900 border-b border-gray-800 hover:bg-gray-800/50 hover:shadow-sm transition-all duration-200 px-4 py-3">

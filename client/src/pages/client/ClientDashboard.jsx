@@ -99,14 +99,19 @@ const ClientDashboard = () => {
    const getDaysLeftDisplay = () => {
       const membership = formState?.membership;
       if (!membership) return '-';
-      if (membership.status === 'upcoming') {
-         return `Starts in ${membership.daysUntilStart} days`;
+
+      const calcDb = calculateDaysLeft(membership.startDate, membership.endDate);
+      const computedValue = calcDb !== null ? calcDb : (membership.daysLeft ?? '-');
+      
+      if (typeof computedValue === 'string' && computedValue.includes('Starts in')) {
+         return computedValue;
       }
-      if (membership.status === 'expired' || membership.status === 'red_tag') {
+      
+      if (membership.status === 'expired' || membership.status === 'overdue') {
          return 'Expired';
       }
-      const calcDb = membership.daysLeft ?? calculateDaysLeft(membership.endDate) ?? '-';
-      return `${calcDb} days left`;
+
+      return `${computedValue} days left`;
    };
 
    const inputClassName = editing ? 'input-field' : 'input-field bg-gray-800/60 text-gray-500 cursor-not-allowed';
