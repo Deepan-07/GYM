@@ -7,9 +7,15 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 
-const phoneError = 'Please enter a valid 10-digit phone number';
+const phoneError = 'Enter a valid 10-digit Indian mobile number';
+const phoneRegex = /^(\+91)?[6-9]\d{9}$/;
 const passwordError = 'Password must be at least 8 characters with 1 uppercase and 1 number';
 const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const handlePhoneInput = (e) => {
+  let val = e.target.value.replace(/(?!^\+)[^\d]/g, '');
+  e.target.value = val.startsWith('+') ? val.slice(0, 13) : val.slice(0, 10);
+};
 
 const optionalUrl = yup.string().trim().test(
   'optional-url',
@@ -21,7 +27,7 @@ const schema = yup.object({
   gymIdPrefix: yup.string().trim().required('Gym ID prefix is required').max(3, 'Max 3 chars').matches(/^[A-Za-z]+$/, 'Letters only'),
   gymName: yup.string().trim().required('Gym name is required').max(100, 'Max 100 limit'),
   gymEmail: yup.string().trim().email('Please enter a valid email address').required('Gym email is required'),
-  gymContact: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError),
+  gymContact: yup.string().matches(phoneRegex, phoneError).required(phoneError),
   address: yup.string().trim().required('Address is required').max(200, 'Max 200 limit'),
   location: yup.string().trim().required('Location is required'),
   gst: yup.string().trim().nullable(),
@@ -36,13 +42,13 @@ const schema = yup.object({
   password: yup.string().min(8, passwordError).matches(/^(?=.*[A-Z])(?=.*\d).+$/, passwordError).required(passwordError),
   confirmPassword: yup.string().oneOf([yup.ref('password')], 'Passwords do not match').required('Please confirm your password'),
   name: yup.string().trim().required('Owner name is required').max(100, 'Max 100 limit'),
-  mobileNo: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError),
+  mobileNo: yup.string().matches(phoneRegex, phoneError).required(phoneError),
   mailId: yup.string().trim().email('Please enter a valid email address').required('Email is required'),
-  whatsappNumber: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError),
-  phoneNumber: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError),
+  whatsappNumber: yup.string().matches(phoneRegex, phoneError).required(phoneError),
+  phoneNumber: yup.string().matches(phoneRegex, phoneError).required(phoneError),
   gmail: yup.string().trim().email('Please enter a valid email address').required('Email is required'),
   billingIdPrefix: yup.string().trim().required('Billing prefix is required').max(5, 'Max 5 chars').matches(/^[A-Za-z0-9]+$/, 'Alphanumeric only'),
-  helpContact: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError),
+  helpContact: yup.string().matches(phoneRegex, phoneError).required(phoneError),
   addressOnBill: yup.string().trim().required('Billing address is required'),
   regards: yup.string().trim().required('Regards text is required'),
   greetingText: yup.string().trim().required('Greeting text is required'),
@@ -76,6 +82,7 @@ const GymRegister = () => {
     watch,
     setValue,
     setError,
+    setFocus,
     formState: { errors, touchedFields, isSubmitted }
   } = useForm({
     resolver: yupResolver(schema),
@@ -88,8 +95,8 @@ const GymRegister = () => {
 
   const values = watch();
 
-  const showFieldError = (field) => Boolean(errors[field] && (touchedFields[field] || isSubmitted));
-  const fieldClassName = (field, extra = '') => `input-field ${extra} ${showFieldError(field) ? 'border-red-500' : ''}`.trim();
+  const showFieldError = (field) => Boolean(errors[field]);
+  const fieldClassName = (field, extra = '') => `input-field ${extra} ${showFieldError(field) ? 'border-red-500 focus:ring-2 focus:ring-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.3)]' : ''}`.trim();
 
   const isFieldFilled = (field) => {
     const value = values[field];
@@ -135,7 +142,13 @@ const GymRegister = () => {
            setStep((currentStep) => currentStep + 1);
         }
     } else {
-        toast.error("Please correctly fill out all required fields.");
+        setTimeout(() => {
+          const firstErrorField = stepRequiredFields[step].find(field => document.querySelector(`[name="${field}"]`)?.classList.contains('border-red-500'));
+          if (firstErrorField) {
+            setFocus(firstErrorField);
+            document.querySelector(`[name="${firstErrorField}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 50);
     }
   };
 
@@ -231,35 +244,35 @@ const GymRegister = () => {
               <div className="md:col-span-2"><h3 className="text-xl text-white mb-2 border-b border-gray-700 pb-2">Gym Details</h3></div>
 
               <div>
-                <p className="text-xs text-gray-400 mb-1">Gym ID Prefix</p>
+                <p className="text-xs text-gray-400 mb-1">Gym ID Prefix <span className="text-red-500">*</span></p>
                 <input {...register('gymIdPrefix')} placeholder="E.g. DNB" className={fieldClassName('gymIdPrefix', 'uppercase')} maxLength="3" />
                 {showFieldError('gymIdPrefix') && <p className="text-red-500 text-xs mt-1">{errors.gymIdPrefix.message}</p>}
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Gym Name</p>
+                <p className="text-xs text-gray-400 mb-1">Gym Name <span className="text-red-500">*</span></p>
                 <input {...register('gymName')} placeholder="Gym Name" className={fieldClassName('gymName')} />
                 {showFieldError('gymName') && <p className="text-red-500 text-xs mt-1">{errors.gymName.message}</p>}
               </div>
 
               <div>
-                <p className="text-xs text-gray-400 mb-1">Gym Email</p>
+                <p className="text-xs text-gray-400 mb-1">Gym Email <span className="text-red-500">*</span></p>
                 <input {...register('gymEmail')} type="email" placeholder="Gym Email" className={fieldClassName('gymEmail')} />
                 {showFieldError('gymEmail') && <p className="text-red-500 text-xs mt-1">{errors.gymEmail.message}</p>}
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Gym Contact</p>
-                <input {...register('gymContact')} type="number" placeholder="10-digit contact number" className={fieldClassName('gymContact', 'no-spinner')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
+                <p className="text-xs text-gray-400 mb-1">Gym Contact <span className="text-red-500">*</span></p>
+                <input {...register('gymContact')} type="tel" placeholder="10-digit contact number" className={fieldClassName('gymContact')} onInput={handlePhoneInput} />
                 {showFieldError('gymContact') && <p className="text-red-500 text-xs mt-1">{errors.gymContact.message}</p>}
               </div>
 
               <div className="md:col-span-2">
-                <p className="text-xs text-gray-400 mb-1">Address</p>
+                <p className="text-xs text-gray-400 mb-1">Address <span className="text-red-500">*</span></p>
                 <textarea {...register('address')} placeholder="Full address" className={fieldClassName('address', 'h-20 resize-none')} />
                 {showFieldError('address') && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
               </div>
 
               <div>
-                <p className="text-xs text-gray-400 mb-1">Location</p>
+                <p className="text-xs text-gray-400 mb-1">Location <span className="text-red-500">*</span></p>
                 <input {...register('location')} placeholder="City / Location" className={fieldClassName('location')} />
                 {showFieldError('location') && <p className="text-red-500 text-xs mt-1">{errors.location.message}</p>}
               </div>
@@ -316,12 +329,12 @@ const GymRegister = () => {
               </div>
 
               <div>
-                <p className="text-xs text-gray-400 mb-1">Password</p>
+                <p className="text-xs text-gray-400 mb-1">Password <span className="text-red-500">*</span></p>
                 <input {...register('password')} type="password" placeholder="Password" className={fieldClassName('password')} />
                 {showFieldError('password') && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Confirm Password</p>
+                <p className="text-xs text-gray-400 mb-1">Confirm Password <span className="text-red-500">*</span></p>
                 <input {...register('confirmPassword')} type="password" placeholder="Confirm Password" className={fieldClassName('confirmPassword')} />
                 {showFieldError('confirmPassword') && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
               </div>
@@ -333,18 +346,18 @@ const GymRegister = () => {
               <div className="md:col-span-2"><h3 className="text-xl text-white mb-2 border-b border-gray-700 pb-2">Owner Details</h3></div>
 
               <div>
-                <p className="text-xs text-gray-400 mb-1">Owner Full Name</p>
+                <p className="text-xs text-gray-400 mb-1">Owner Full Name <span className="text-red-500">*</span></p>
                 <input {...register('name')} placeholder="Owner Full Name" className={fieldClassName('name')} />
                 {showFieldError('name') && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Personal Mobile Number</p>
-                <input {...register('mobileNo')} type="number" placeholder="10-digit mobile number" className={fieldClassName('mobileNo')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
+                <p className="text-xs text-gray-400 mb-1">Personal Mobile Number <span className="text-red-500">*</span></p>
+                <input {...register('mobileNo')} type="tel" placeholder="10-digit mobile number" className={fieldClassName('mobileNo')} onInput={handlePhoneInput} />
                 {showFieldError('mobileNo') && <p className="text-red-500 text-xs mt-1">{errors.mobileNo.message}</p>}
               </div>
 
               <div className="md:col-span-2">
-                <p className="text-xs text-gray-400 mb-1">Personal Email</p>
+                <p className="text-xs text-gray-400 mb-1">Personal Email <span className="text-red-500">*</span></p>
                 <input {...register('mailId')} type="email" placeholder="Owner email address" className={fieldClassName('mailId')} />
                 {showFieldError('mailId') && <p className="text-red-500 text-xs mt-1">{errors.mailId.message}</p>}
               </div>
@@ -360,18 +373,18 @@ const GymRegister = () => {
               </div>
 
               <div>
-                <p className="text-xs text-gray-400 mb-1">WhatsApp Number</p>
-                <input {...register('whatsappNumber')} type="number" placeholder="10-digit WhatsApp number" className={fieldClassName('whatsappNumber')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
+                <p className="text-xs text-gray-400 mb-1">WhatsApp Number <span className="text-red-500">*</span></p>
+                <input {...register('whatsappNumber')} type="tel" placeholder="10-digit WhatsApp number" className={fieldClassName('whatsappNumber')} onInput={handlePhoneInput} />
                 {showFieldError('whatsappNumber') && <p className="text-red-500 text-xs mt-1">{errors.whatsappNumber.message}</p>}
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">SMS Source Number</p>
-                <input {...register('phoneNumber')} type="number" placeholder="10-digit SMS number" className={fieldClassName('phoneNumber')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
+                <p className="text-xs text-gray-400 mb-1">SMS Source Number <span className="text-red-500">*</span></p>
+                <input {...register('phoneNumber')} type="tel" placeholder="10-digit SMS number" className={fieldClassName('phoneNumber')} onInput={handlePhoneInput} />
                 {showFieldError('phoneNumber') && <p className="text-red-500 text-xs mt-1">{errors.phoneNumber.message}</p>}
               </div>
 
               <div className="md:col-span-2">
-                <p className="text-xs text-gray-400 mb-1">Sender Email</p>
+                <p className="text-xs text-gray-400 mb-1">Sender Email <span className="text-red-500">*</span></p>
                 <input {...register('gmail')} type="email" placeholder="Email used for reminders" className={fieldClassName('gmail')} />
                 {showFieldError('gmail') && <p className="text-red-500 text-xs mt-1">{errors.gmail.message}</p>}
               </div>
@@ -383,29 +396,29 @@ const GymRegister = () => {
               <div className="md:col-span-2"><h3 className="text-xl text-white mb-2 border-b border-gray-700 pb-2">Billing Details</h3></div>
 
               <div>
-                <p className="text-xs text-gray-400 mb-1">Billing Prefix</p>
+                <p className="text-xs text-gray-400 mb-1">Billing Prefix <span className="text-red-500">*</span></p>
                 <input {...register('billingIdPrefix')} placeholder="E.g. INV" className={fieldClassName('billingIdPrefix', 'uppercase')} maxLength="5" />
                 {showFieldError('billingIdPrefix') && <p className="text-red-500 text-xs mt-1">{errors.billingIdPrefix.message}</p>}
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Helpdesk Contact</p>
-                <input {...register('helpContact')} type="number" placeholder="10-digit support number" className={fieldClassName('helpContact')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
+                <p className="text-xs text-gray-400 mb-1">Helpdesk Contact <span className="text-red-500">*</span></p>
+                <input {...register('helpContact')} type="tel" placeholder="10-digit support number" className={fieldClassName('helpContact')} onInput={handlePhoneInput} />
                 {showFieldError('helpContact') && <p className="text-red-500 text-xs mt-1">{errors.helpContact.message}</p>}
               </div>
 
               <div className="md:col-span-2">
-                <p className="text-xs text-gray-400 mb-1">Address on Bill</p>
+                <p className="text-xs text-gray-400 mb-1">Address on Bill <span className="text-red-500">*</span></p>
                 <textarea {...register('addressOnBill')} placeholder="Address visible on invoices" className={fieldClassName('addressOnBill', 'h-20 resize-none')} />
                 {showFieldError('addressOnBill') && <p className="text-red-500 text-xs mt-1">{errors.addressOnBill.message}</p>}
               </div>
 
               <div>
-                <p className="text-xs text-gray-400 mb-1">Regards Text</p>
+                <p className="text-xs text-gray-400 mb-1">Regards Text <span className="text-red-500">*</span></p>
                 <input {...register('regards')} placeholder="Regards, Team Example Gym" className={fieldClassName('regards')} />
                 {showFieldError('regards') && <p className="text-red-500 text-xs mt-1">{errors.regards.message}</p>}
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Greeting Message</p>
+                <p className="text-xs text-gray-400 mb-1">Greeting Message <span className="text-red-500">*</span></p>
                 <input {...register('greetingText')} placeholder="Thank you for training with us" className={fieldClassName('greetingText')} />
                 {showFieldError('greetingText') && <p className="text-red-500 text-xs mt-1">{errors.greetingText.message}</p>}
               </div>

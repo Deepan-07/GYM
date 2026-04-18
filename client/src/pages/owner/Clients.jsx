@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 // Sidebar removed
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
-import { Search, Filter, Plus } from 'lucide-react';
+import { Search, Filter, Plus, X } from 'lucide-react';
 import Button from '../../components/Button';
 import ClientForm from '../../components/ClientForm';
 import ClientCard from '../../components/ClientCard';
@@ -14,10 +14,17 @@ const Clients = () => {
     const [filterStatus, setFilterStatus] = useState('All');
     const [showAddModal, setShowAddModal] = useState(false);
     const [formInstanceKey, setFormInstanceKey] = useState(0);
+    const [isFormDirty, setIsFormDirty] = useState(false);
 
-    const closeAddModal = () => {
+    const closeAddModal = (force = false) => {
+        if (!force && isFormDirty) {
+            if (!window.confirm("You have unsaved changes. Are you sure you want to close?")) {
+                return;
+            }
+        }
         setShowAddModal(false);
         setFormInstanceKey((currentKey) => currentKey + 1);
+        setIsFormDirty(false);
     };
 
     const fetchClients = async () => {
@@ -72,18 +79,22 @@ const Clients = () => {
                 </div>
 
                 {showAddModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={closeAddModal}>
-                        <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative shadow-2xl animate-in fade-in zoom-in-95 duration-200" onClick={(event) => event.stopPropagation()}>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                        <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                            <button type="button" onClick={() => closeAddModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-10">
+                                <X size={24} />
+                            </button>
                             <div className="p-8">
                                 <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-800 pb-4">Enroll New Client</h2>
                                 <ClientForm 
                                     key={formInstanceKey}
                                     mode="owner" 
                                     showCancel
-                                    onCancel={closeAddModal}
+                                    onCancel={() => closeAddModal(false)}
+                                    onDirtyChange={setIsFormDirty}
                                     onSuccess={() => { 
-                                        closeAddModal(); 
-                                        toast.success('Client created successfully');
+                                        closeAddModal(true); 
+                                        toast.success('Client added successfully');
                                         fetchClients(); 
                                     }} 
                                 />

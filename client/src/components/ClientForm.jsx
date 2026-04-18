@@ -46,7 +46,7 @@ const selfStepOneFields = ['gymId', 'gymName', 'name', 'gender', 'email', 'dob',
 const selfStepTwoFields = ['planId', 'startDate', 'password', 'confirmPassword'];
 const ownerRequiredFields = ['name', 'gender', 'email', 'dob', 'mobileNo', 'address', 'emergencyContact', 'password', 'confirmPassword', 'planId', 'startDate'];
 
-const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false }) => {
+const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, onDirtyChange }) => {
   const { user } = useAuth();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -63,7 +63,7 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false }) 
     setValue,
     setError,
     clearErrors,
-    formState: { errors, touchedFields, isSubmitted }
+    formState: { errors, touchedFields, isSubmitted, isDirty }
   } = useForm({
     resolver: yupResolver(getValidationSchema(mode)),
     defaultValues: {
@@ -78,6 +78,12 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false }) 
   const values = watch();
   const watchGymId = watch('gymId');
   const watchGymName = watch('gymName');
+
+  useEffect(() => {
+    if (onDirtyChange) {
+      onDirtyChange(isDirty || Object.keys(touchedFields).length > 0);
+    }
+  }, [isDirty, touchedFields, onDirtyChange]);
 
   useEffect(() => {
     if (isOwner && user?.gymId) {
