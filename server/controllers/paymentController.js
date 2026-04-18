@@ -47,11 +47,11 @@ exports.recordPayment = async (req, res, next) => {
     if(planDetails) {
        client.membership.planName = planDetails.planName;
        client.membership.planId = planId;
-       client.membership.durationDays = planDetails.durationDays;
+       client.membership.durationMonths = planDetails.durationMonths;
 
        const membershipWindow = buildMembershipWindow({
          startDate: new Date(),
-         durationDays: planDetails.durationDays
+         durationMonths: planDetails.durationMonths
        });
 
        client.membership.startDate = membershipWindow.startDate;

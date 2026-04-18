@@ -96,7 +96,19 @@ const ClientDashboard = () => {
       }
    };
 
-   const daysLeft = calculateDaysLeft(formState?.membership?.endDate) ?? formState?.membership?.daysLeft ?? '-';
+   const getDaysLeftDisplay = () => {
+      const membership = formState?.membership;
+      if (!membership) return '-';
+      if (membership.status === 'upcoming') {
+         return `Starts in ${membership.daysUntilStart} days`;
+      }
+      if (membership.status === 'expired' || membership.status === 'red_tag') {
+         return 'Expired';
+      }
+      const calcDb = membership.daysLeft ?? calculateDaysLeft(membership.endDate) ?? '-';
+      return `${calcDb} days left`;
+   };
+
    const inputClassName = editing ? 'input-field' : 'input-field bg-gray-800/60 text-gray-500 cursor-not-allowed';
 
    if (loading || !formState) {
@@ -144,8 +156,8 @@ const ClientDashboard = () => {
             <h2 className="text-xl font-semibold text-white border-b border-gray-800 pb-4">Membership Info</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               <div className="bg-gray-800/40 rounded-lg p-4 border border-gray-800"><p className="text-xs text-gray-500 uppercase mb-1">Plan</p><p className="text-white">{formState.membership?.planName || 'N/A'}</p></div>
-              <div className="bg-gray-800/40 rounded-lg p-4 border border-gray-800"><p className="text-xs text-gray-500 uppercase mb-1">Duration</p><p className="text-white">{formState.membership?.durationDays ? `${formState.membership.durationDays} Days` : 'N/A'}</p></div>
-              <div className="bg-gray-800/40 rounded-lg p-4 border border-gray-800"><p className="text-xs text-gray-500 uppercase mb-1">Days Left</p><p className="text-white">{daysLeft}</p></div>
+              <div className="bg-gray-800/40 rounded-lg p-4 border border-gray-800"><p className="text-xs text-gray-500 uppercase mb-1">Duration</p><p className="text-white">{formState.membership?.durationMonths ? `${formState.membership.durationMonths} Months` : 'N/A'}</p></div>
+              <div className="bg-gray-800/40 rounded-lg p-4 border border-gray-800"><p className="text-xs text-gray-500 uppercase mb-1">Days Left</p><p className="text-white">{getDaysLeftDisplay()}</p></div>
               <div className="bg-gray-800/40 rounded-lg p-4 border border-gray-800"><p className="text-xs text-gray-500 uppercase mb-1">Start Date</p><p className="text-white">{formatDisplayDate(formState.membership?.startDate)}</p></div>
               <div className="bg-gray-800/40 rounded-lg p-4 border border-gray-800"><p className="text-xs text-gray-500 uppercase mb-1">End Date</p><p className="text-white">{formatDisplayDate(formState.membership?.endDate)}</p></div>
               <div className="bg-gray-800/40 rounded-lg p-4 border border-gray-800"><p className="text-xs text-gray-500 uppercase mb-1">Status</p><p className="text-white uppercase">{formState.membership?.status?.replace('_', ' ') || 'N/A'}</p></div>

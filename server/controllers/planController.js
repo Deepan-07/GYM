@@ -5,13 +5,13 @@ const Plan = require('../models/Plan');
 // @access  Private (Owner)
 exports.createPlan = async (req, res, next) => {
   try {
-    const { planName, durationDays, price, description } = req.body;
+    const { planName, durationMonths, price, description } = req.body;
     const gymId = req.user.gymId; // string prefix format
 
     const plan = await Plan.create({
       gymId,
       planName,
-      durationDays,
+      durationMonths,
       price,
       description
     });
@@ -52,7 +52,8 @@ exports.getPlans = async (req, res, next) => {
 // @access  Private (Owner)
 exports.updatePlan = async (req, res, next) => {
   try {
-    const plan = await Plan.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const { planName, durationMonths, price, description } = req.body;
+    const plan = await Plan.findByIdAndUpdate(req.params.id, { planName, durationMonths, price, description }, { new: true, runValidators: true });
     if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
     res.status(200).json({ success: true, data: plan });
   } catch (err) {

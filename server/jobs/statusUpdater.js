@@ -9,11 +9,11 @@ cron.schedule('5 0 * * *', async () => {
     const clients = await Client.find({ 'membership.requestApproved': true });
     
     for (let client of clients) {
-      if (!client.membership.startDate || !client.membership.durationDays) continue;
+      if (!client.membership.startDate || !client.membership.durationMonths) continue;
 
       const membershipWindow = buildMembershipWindow({
         startDate: client.membership.startDate,
-        durationDays: client.membership.durationDays,
+        durationMonths: client.membership.durationMonths,
         today: new Date()
       });
 
