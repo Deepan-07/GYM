@@ -19,7 +19,7 @@ const clientSchema = new mongoose.Schema({
   membership: {
     planId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan' },
     planName: { type: String },
-    durationDays: { type: Number },
+    durationMonths: { type: Number },
     startDate: { type: Date },
     endDate: { type: Date },
     daysLeft: { type: Number },

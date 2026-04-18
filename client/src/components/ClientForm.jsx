@@ -321,7 +321,7 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false }) 
           <option value="">Select a membership plan</option>
           {plans.map((plan) => (
             <option key={plan._id} value={plan._id}>
-              {plan.planName} - {plan.durationDays} days
+              {plan.planName} - {plan.durationMonths} months
             </option>
           ))}
         </select>

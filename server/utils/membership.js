@@ -20,21 +20,43 @@ const getMembershipStatus = (daysLeft) => {
   return 'red_tag';
 };
 
-const buildMembershipWindow = ({ startDate, durationDays, today = new Date() }) => {
+const buildMembershipWindow = ({ startDate, durationMonths, today = new Date() }) => {
   const normalizedStartDate = normalizeDate(startDate);
   const normalizedToday = normalizeDate(today);
   const endDate = new Date(normalizedStartDate);
 
-  endDate.setDate(endDate.getDate() + Number(durationDays) - 1);
+  endDate.setMonth(endDate.getMonth() + Number(durationMonths));
+
+  if (normalizedToday < normalizedStartDate) {
+    const diffTime = normalizedStartDate.getTime() - normalizedToday.getTime();
+    const daysUntilStart = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return {
+      startDate: normalizedStartDate,
+      endDate,
+      status: 'upcoming',
+      daysUntilStart,
+      daysLeft: 0
+    };
+  }
 
   const diffTime = endDate.getTime() - normalizedToday.getTime();
-  const daysLeft = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
+  if (normalizedToday >= normalizedStartDate && normalizedToday <= endDate) {
+    return {
+      startDate: normalizedStartDate,
+      endDate,
+      status: getMembershipStatus(daysLeft),
+      daysLeft
+    };
+  }
+
+  // expired
   return {
     startDate: normalizedStartDate,
     endDate,
-    daysLeft,
-    status: getMembershipStatus(daysLeft)
+    status: getMembershipStatus(daysLeft),
+    daysLeft: 0
   };
 };
 

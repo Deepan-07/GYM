@@ -90,7 +90,7 @@ exports.addClient = async (req, res, next) => {
     const clientId = await generateClientId(gymIdStr);
     const membershipWindow = buildMembershipWindow({
       startDate: membership?.startDate || Date.now(),
-      durationDays: plan.durationDays
+      durationMonths: plan.durationMonths
     });
 
     const client = await Client.create({
@@ -103,7 +103,7 @@ exports.addClient = async (req, res, next) => {
       membership: {
         planId: plan._id,
         planName: plan.planName,
-        durationDays: plan.durationDays,
+        durationMonths: plan.durationMonths,
         startDate: membershipWindow.startDate,
         endDate: membershipWindow.endDate,
         daysLeft: membershipWindow.daysLeft,
@@ -156,7 +156,7 @@ exports.approveClient = async (req, res, next) => {
     if (!plan) return res.status(400).json({ success: false, message: 'Plan not found' });
     const membershipWindow = buildMembershipWindow({
       startDate: client.membership.startDate || Date.now(),
-      durationDays: plan.durationDays
+      durationMonths: plan.durationMonths
     });
 
     if (!client.clientId) {
@@ -170,7 +170,7 @@ exports.approveClient = async (req, res, next) => {
     client.membership.endDate = membershipWindow.endDate;
     client.membership.daysLeft = membershipWindow.daysLeft;
     client.membership.planName = plan.planName;
-    client.membership.durationDays = plan.durationDays;
+    client.membership.durationMonths = plan.durationMonths;
 
     await client.save();
     res.status(200).json({ success: true, data: client });

@@ -54,7 +54,7 @@ const ClientPlans = () => {
                         {plans.map(plan => (
                             <div key={plan._id} className="card relative flex flex-col group border-primary/20 transition-colors">
                                 <h3 className="text-xl font-bold text-white mb-2">{plan.planName}</h3>
-                                <p className="text-primary text-3xl font-black mb-4">₹{plan.price}<span className="text-sm text-gray-400 font-normal"> / {plan.durationDays} days</span></p>
+                                <p className="text-primary text-3xl font-black mb-4">₹{plan.price}<span className="text-sm text-gray-400 font-normal"> / {plan.durationMonths} months</span></p>
                                 <p className="text-gray-400 text-sm flex-1 mb-6">{plan.description}</p>
                                 <p className="text-xs text-gray-500">Contact gym owner to subscribe to this plan.</p>
                             </div>
