@@ -127,15 +127,28 @@ const Clients = () => {
                 ) : filteredClients.length === 0 ? (
                     <div className="card bg-gray-900 border-gray-800 text-center py-16 text-gray-400">No clients found</div>
                 ) : (
-                    <div className="space-y-4">
-                        {filteredClients.map((client) => (
-                            <ClientCard
-                                key={client._id}
-                                client={client}
-                                onView={handleView}
-                                onDelete={(selectedClient) => handleDelete(selectedClient._id)}
-                            />
-                        ))}
+                    <div className="card p-0 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-lg">
+                        {/* List Header */}
+                        <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_2fr_1fr_1fr_1fr] gap-2 px-4 py-4 bg-gray-900/80 border-b border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wider sticky top-0 z-10 backdrop-blur-sm">
+                            <div>Client Info</div>
+                            <div>Mobile</div>
+                            <div>Plan</div>
+                            <div>Duration</div>
+                            <div>Days Left</div>
+                            <div>Status</div>
+                            <div className="text-right pd-pr-4">Actions</div>
+                        </div>
+
+                        <div className="flex flex-col">
+                            {filteredClients.map((client) => (
+                                <ClientCard
+                                    key={client._id}
+                                    client={client}
+                                    onView={handleView}
+                                    onDelete={(selectedClient) => handleDelete(selectedClient._id)}
+                                />
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
