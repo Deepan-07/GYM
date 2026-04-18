@@ -18,9 +18,8 @@ const getNextSequenceValue = async (name) => {
 };
 
 const generateGymId = async (prefix) => {
-  const clean = prefix.toUpperCase().replace(/[^A-Z0-9]/g, '');
   const sequence = await getNextSequenceValue('gymId');
-  return `${clean}-${String(sequence).padStart(2, '0')}`;
+  return `NEX-${String(sequence).padStart(2, '0')}`;
 };
 
 const generateClientId = async (gymIdStr) => {
@@ -32,7 +31,7 @@ const generateClientId = async (gymIdStr) => {
   }
 
   const sequence = await getNextSequenceValue(`clientId:${gymIdStr}`);
-  return `${prefix}-${String(sequence).padStart(4, '0')}`;
+  return `${prefix}-${String(sequence).padStart(2, '0')}`;
 };
 
 const generatePaymentId = async (gymId, billingPrefix) => {

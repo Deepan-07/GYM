@@ -120,7 +120,7 @@ const Dashboard = () => {
                    <StatCard title="Total Clients" value={stats?.stats?.totalClients} icon={<Users size={24} className="text-primary" />} color="bg-primary text-primary" />
                    <StatCard title="Active" value={stats?.stats?.activeClients} icon={<UserCheck size={24} className="text-accent" />} color="bg-accent text-accent" />
                    <StatCard title="Expiring Soon" value={stats?.stats?.expiringSoon} icon={<AlertCircle size={24} className="text-warning" />} color="bg-warning text-warning" />
-                   <StatCard title="Red Tag" value={stats?.stats?.redTagClients} icon={<AlertTriangle size={24} className="text-alert" />} color="bg-alert text-alert" />
+                   <StatCard title="Overdue" value={stats?.stats?.redTagClients} icon={<AlertTriangle size={24} className="text-alert" />} color="bg-alert text-alert" />
                    <StatCard title="Total Plans" value={stats?.stats?.totalPlans} icon={<List size={24} className="text-gray-300" />} color="bg-gray-600 text-white" />
                </div>
 
@@ -155,14 +155,14 @@ const Dashboard = () => {
                      )}
                   </div>
 
-                  {/* Red Tag List */}
+                  {/* Overdue List */}
                   <div className="card">
                      <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-alert"></div> Red Tag</h3>
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-alert"></div> Overdue</h3>
                         <span className="text-alert text-sm font-medium hover:underline cursor-pointer">View All</span>
                      </div>
                      {stats?.redTagList?.length === 0 ? (
-                         <div className="py-8 text-center text-gray-500 bg-gray-800/20 rounded-lg border border-gray-800 dashed">No red tag clients</div>
+                         <div className="py-8 text-center text-gray-500 bg-gray-800/20 rounded-lg border border-gray-800 dashed">No overdue clients</div>
                      ) : (
                          <div className="space-y-4">
                              {stats?.redTagList?.map(client => (

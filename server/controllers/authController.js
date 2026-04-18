@@ -91,23 +91,41 @@ exports.registerGymOwner = async (req, res, next) => {
   }
 };
 
-// @desc    Login Gym Owner
-// @route   POST /api/auth/gym/login
+// @desc    Check if email or phone exists
+// @route   POST /api/auth/check-exists
 // @access  Public
-exports.loginGymOwner = async (req, res, next) => {
+exports.checkExists = async (req, res, next) => {
   try {
-    const { gymId, gymName, phone, password } = req.body;
-    const gym = await Gym.findOne({ gymId, gymName, gymContact: phone });
+    const { email, phone } = req.body;
+    let exists = false;
+    let message = '';
 
-    if (gym && (await gym.matchPassword(password))) {
-      res.json({
-        success: true,
-        data: gym,
-        token: generateToken(gym._id, 'owner', { gymId: gym.gymId, gymName: gym.gymName })
-      });
-    } else {
-      res.status(401).json({ success: false, message: 'Invalid credentials' });
+    if (email) {
+      const gymEmailExists = await Gym.findOne({ gymEmail: email });
+      const clientEmailExists = await Client.findOne({ 'personalInfo.email': email });
+      const adminEmailExists = await Admin.findOne({ email });
+
+      if (gymEmailExists || clientEmailExists || adminEmailExists) {
+        exists = true;
+        message = 'Email already exists';
+      }
     }
+
+    if (phone && !exists) {
+      const gymPhoneExists = await Gym.findOne({ gymContact: phone });
+      const clientPhoneExists = await Client.findOne({ 'personalInfo.mobileNo': phone });
+
+      if (gymPhoneExists || clientPhoneExists) {
+        exists = true;
+        message = 'Phone number already exists';
+      }
+    }
+
+    if (exists) {
+      return res.status(409).json({ success: false, message });
+    }
+
+    res.status(200).json({ success: true, message: 'Available' });
   } catch (err) {
     next(err);
   }
@@ -157,49 +175,57 @@ exports.registerClient = async (req, res, next) => {
   }
 };
 
-// @desc    Login Client
-// @route   POST /api/auth/client/login
+// @desc    Universal Login
+// @route   POST /api/auth/login
 // @access  Public
-exports.loginClient = async (req, res, next) => {
+exports.universalLogin = async (req, res, next) => {
   try {
-    const { gymId, gymName, clientId, mobileNo, password } = req.body;
-    const client = await Client.findOne({ gymId, gymName, clientId, 'personalInfo.mobileNo': mobileNo });
+    const { loginId, password } = req.body;
+    const isEmail = loginId.includes('@');
 
+    // 1. Check Admin
+    if (isEmail) {
+      const admin = await Admin.findOne({ email: loginId });
+      if (admin && (await admin.matchPassword(password))) {
+        return res.json({
+          success: true,
+          data: { email: admin.email, role: admin.role },
+          token: generateToken(admin._id, 'superadmin')
+        });
+      }
+    }
+
+    // 2. Check Gym
+    const gymQuery = isEmail ? { gymEmail: loginId } : { gymContact: loginId };
+    const gym = await Gym.findOne(gymQuery);
+    if (gym && (await gym.matchPassword(password))) {
+      return res.json({
+        success: true,
+        data: gym,
+        token: generateToken(gym._id, 'owner', { gymId: gym.gymId, gymName: gym.gymName }),
+        role: 'owner'
+      });
+    }
+
+    // 3. Check Client
+    const clientQuery = isEmail ? { 'personalInfo.email': loginId } : { 'personalInfo.mobileNo': loginId };
+    const client = await Client.findOne(clientQuery);
+    
     if (client && (await client.matchPassword(password))) {
       if (!client.membership.requestApproved) {
-         return res.status(401).json({ success: false, message: 'Your membership is pending approval by the gym owner' });
+        return res.status(401).json({ success: false, message: 'Your membership is pending approval by the gym owner' });
       }
 
-      res.json({
+      return res.json({
         success: true,
         data: client,
-        token: generateToken(client._id, 'client')
+        token: generateToken(client._id, 'client'),
+        role: 'client'
       });
-    } else {
-      res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
-  } catch (err) {
-    next(err);
-  }
-};
 
-// @desc    Login Super Admin
-// @route   POST /api/auth/admin/login
-// @access  Public
-exports.loginAdmin = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-    const admin = await Admin.findOne({ email });
-
-    if (admin && (await admin.matchPassword(password))) {
-      res.json({
-        success: true,
-        data: { email: admin.email, role: admin.role },
-        token: generateToken(admin._id, 'superadmin')
-      });
-    } else {
-      res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
+    // If no match found
+    res.status(401).json({ success: false, message: 'Invalid credentials' });
   } catch (err) {
     next(err);
   }

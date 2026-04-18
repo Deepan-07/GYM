@@ -10,8 +10,8 @@ const clientSchema = new mongoose.Schema({
     dob: { type: Date, required: true },
     gender: { type: String, required: true },
     address: { type: String, required: true },
-    email: { type: String, required: true },
-    mobileNo: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    mobileNo: { type: String, required: true, unique: true },
     emergencyContact: { type: String },
     medicalCondition: { type: String }
   },
@@ -25,7 +25,7 @@ const clientSchema = new mongoose.Schema({
     daysLeft: { type: Number },
     status: { 
       type: String, 
-      enum: ['active', 'expiring_soon', 'expired', 'red_tag', 'pending'],
+      enum: ['active', 'expiring_soon', 'expired', 'overdue', 'pending', 'upcoming'],
       default: 'pending'
     },
     requestApproved: { type: Boolean, default: false }

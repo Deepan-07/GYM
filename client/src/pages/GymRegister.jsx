@@ -18,11 +18,11 @@ const optionalUrl = yup.string().trim().test(
 );
 
 const schema = yup.object({
-  gymIdPrefix: yup.string().trim().required('Gym ID prefix is required').max(5, 'Max 5 chars').matches(/^[A-Za-z0-9]+$/, 'Alphanumeric only'),
-  gymName: yup.string().trim().required('Gym name is required'),
+  gymIdPrefix: yup.string().trim().required('Gym ID prefix is required').max(3, 'Max 3 chars').matches(/^[A-Za-z]+$/, 'Letters only'),
+  gymName: yup.string().trim().required('Gym name is required').max(100, 'Max 100 limit'),
   gymEmail: yup.string().trim().email('Please enter a valid email address').required('Gym email is required'),
   gymContact: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError),
-  address: yup.string().trim().required('Address is required'),
+  address: yup.string().trim().required('Address is required').max(200, 'Max 200 limit'),
   location: yup.string().trim().required('Location is required'),
   gst: yup.string().trim().nullable(),
   gymType: yup.string().trim().nullable(),
@@ -35,7 +35,7 @@ const schema = yup.object({
   operatingClose: yup.string().nullable(),
   password: yup.string().min(8, passwordError).matches(/^(?=.*[A-Z])(?=.*\d).+$/, passwordError).required(passwordError),
   confirmPassword: yup.string().oneOf([yup.ref('password')], 'Passwords do not match').required('Please confirm your password'),
-  name: yup.string().trim().required('Owner name is required'),
+  name: yup.string().trim().required('Owner name is required').max(100, 'Max 100 limit'),
   mobileNo: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError),
   mailId: yup.string().trim().email('Please enter a valid email address').required('Email is required'),
   whatsappNumber: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError),
@@ -75,13 +75,14 @@ const GymRegister = () => {
     handleSubmit,
     watch,
     setValue,
+    setError,
     formState: { errors, touchedFields, isSubmitted }
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
       operatingDays: []
     },
-    mode: 'onChange',
+    mode: 'onTouched',
     reValidateMode: 'onChange'
   });
 
@@ -110,10 +111,31 @@ const GymRegister = () => {
   }, [errors, loading, step, values]);
 
   const handleNext = async () => {
-    const isStepValid = await trigger(stepAllFields[step]);
+    const isStepValid = await trigger(stepRequiredFields[step]);
 
     if (isStepValid) {
-      setStep((currentStep) => currentStep + 1);
+        if (step === 1) {
+           setLoading(true);
+           try {
+              await api.post('/auth/check-exists', { email: values.gymEmail, phone: values.gymContact });
+              setStep((currentStep) => currentStep + 1);
+           } catch(err) {
+              if (err.response?.status === 409) {
+                 toast.error(err.response.data.message);
+                 if (err.response.data.message.toLowerCase().includes('email')) {
+                    setError('gymEmail', { type: 'manual', message: 'Email already exists' });
+                 } else {
+                    setError('gymContact', { type: 'manual', message: 'Phone number already exists' });
+                 }
+              }
+           } finally {
+              setLoading(false);
+           }
+        } else {
+           setStep((currentStep) => currentStep + 1);
+        }
+    } else {
+        toast.error("Please correctly fill out all required fields.");
     }
   };
 
@@ -210,7 +232,7 @@ const GymRegister = () => {
 
               <div>
                 <p className="text-xs text-gray-400 mb-1">Gym ID Prefix</p>
-                <input {...register('gymIdPrefix')} placeholder="E.g. DNB" className={fieldClassName('gymIdPrefix', 'uppercase')} maxLength="5" />
+                <input {...register('gymIdPrefix')} placeholder="E.g. DNB" className={fieldClassName('gymIdPrefix', 'uppercase')} maxLength="3" />
                 {showFieldError('gymIdPrefix') && <p className="text-red-500 text-xs mt-1">{errors.gymIdPrefix.message}</p>}
               </div>
               <div>
@@ -226,7 +248,7 @@ const GymRegister = () => {
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-1">Gym Contact</p>
-                <input {...register('gymContact')} placeholder="10-digit contact number" className={fieldClassName('gymContact')} />
+                <input {...register('gymContact')} type="number" placeholder="10-digit contact number" className={fieldClassName('gymContact', 'no-spinner')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
                 {showFieldError('gymContact') && <p className="text-red-500 text-xs mt-1">{errors.gymContact.message}</p>}
               </div>
 
@@ -317,7 +339,7 @@ const GymRegister = () => {
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-1">Personal Mobile Number</p>
-                <input {...register('mobileNo')} placeholder="10-digit mobile number" className={fieldClassName('mobileNo')} />
+                <input {...register('mobileNo')} type="number" placeholder="10-digit mobile number" className={fieldClassName('mobileNo')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
                 {showFieldError('mobileNo') && <p className="text-red-500 text-xs mt-1">{errors.mobileNo.message}</p>}
               </div>
 
@@ -339,12 +361,12 @@ const GymRegister = () => {
 
               <div>
                 <p className="text-xs text-gray-400 mb-1">WhatsApp Number</p>
-                <input {...register('whatsappNumber')} placeholder="10-digit WhatsApp number" className={fieldClassName('whatsappNumber')} />
+                <input {...register('whatsappNumber')} type="number" placeholder="10-digit WhatsApp number" className={fieldClassName('whatsappNumber')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
                 {showFieldError('whatsappNumber') && <p className="text-red-500 text-xs mt-1">{errors.whatsappNumber.message}</p>}
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-1">SMS Source Number</p>
-                <input {...register('phoneNumber')} placeholder="10-digit SMS number" className={fieldClassName('phoneNumber')} />
+                <input {...register('phoneNumber')} type="number" placeholder="10-digit SMS number" className={fieldClassName('phoneNumber')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
                 {showFieldError('phoneNumber') && <p className="text-red-500 text-xs mt-1">{errors.phoneNumber.message}</p>}
               </div>
 
@@ -367,7 +389,7 @@ const GymRegister = () => {
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-1">Helpdesk Contact</p>
-                <input {...register('helpContact')} placeholder="10-digit support number" className={fieldClassName('helpContact')} />
+                <input {...register('helpContact')} type="number" placeholder="10-digit support number" className={fieldClassName('helpContact')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
                 {showFieldError('helpContact') && <p className="text-red-500 text-xs mt-1">{errors.helpContact.message}</p>}
               </div>
 
@@ -415,9 +437,12 @@ const GymRegister = () => {
              ) : <div></div>}
 
              {step < 4 ? (
-                <Button type="button" onClick={handleNext} className="ml-auto" disabled={isStepDisabled}>Next</Button>
+                <Button type="button" onClick={handleNext} className="ml-auto" isLoading={loading}>Next</Button>
              ) : (
-                <Button type="submit" isLoading={loading} className="ml-auto" disabled={isStepDisabled}>Complete Registration</Button>
+                <Button type="button" onClick={async () => {
+                    const valid = await trigger(stepRequiredFields[step]);
+                    if(valid) handleSubmit(onSubmit)();
+                }} isLoading={loading} className="ml-auto">Complete Registration</Button>
              )}
           </div>
         </form>

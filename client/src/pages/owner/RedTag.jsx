@@ -14,7 +14,7 @@ const RedTag = () => {
             const res = await api.get('/redtag');
             setClients(res.data.data);
         } catch(e) {
-            toast.error("Failed to load red tag clients");
+            toast.error("Failed to load overdue clients");
         }
         setLoading(false);
     };
@@ -35,7 +35,7 @@ const RedTag = () => {
             <div className="flex-1 overflow-y-auto p-8 pt-10">
                 <div className="mb-8">
                    <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-                       <AlertOctagon className="text-alert" size={32} /> Red Tag Members
+                       <AlertOctagon className="text-alert" size={32} /> Overdue Members
                    </h1>
                    <p className="text-gray-400 mt-1">Clients whose memberships have expired by more than 3 days.</p>
                 </div>

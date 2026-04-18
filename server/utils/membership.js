@@ -17,7 +17,7 @@ const getMembershipStatus = (daysLeft) => {
     return 'expired';
   }
 
-  return 'red_tag';
+  return 'overdue';
 };
 
 const buildMembershipWindow = ({ startDate, durationMonths, today = new Date() }) => {

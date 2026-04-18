@@ -11,7 +11,7 @@ const LandingPage = () => {
       <Features />
       <HowItWorks />
       <Contact />
-      
+
       <footer className="bg-white py-8 border-t border-gray-100 text-center text-gray-500">
         <p>© {new Date().getFullYear()} GymFlow. All rights reserved.</p>
       </footer>

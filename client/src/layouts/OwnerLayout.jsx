@@ -15,7 +15,7 @@ export default function OwnerLayout() {
     { to: '/owner/clients',   label: 'Clients',    icon: 'users' },
     { to: '/owner/plans',     label: 'Plans',      icon: 'tag' },
     { to: '/owner/payments',  label: 'Payments',   icon: 'credit-card' },
-    { to: '/owner/redtag',    label: 'Red Tag',    icon: 'alert-circle' },
+    { to: '/owner/redtag',    label: 'Overdue',    icon: 'alert-circle' },
     { to: '/owner/profile',   label: 'Profile',    icon: 'user' },
   ];
 

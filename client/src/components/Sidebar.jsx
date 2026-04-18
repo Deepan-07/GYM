@@ -17,7 +17,7 @@ const Sidebar = () => {
     { name: 'Clients', path: '/owner/clients', icon: <Users size={20} /> },
     { name: 'Plans', path: '/owner/plans', icon: <ClipboardList size={20} /> },
     { name: 'Payments', path: '/owner/payments', icon: <CreditCard size={20} /> },
-    { name: 'Red Tag', path: '/owner/redtag', icon: <AlertTriangle size={20} /> },
+    { name: 'Overdue', path: '/owner/redtag', icon: <AlertTriangle size={20} /> },
     { name: 'Profile', path: '/owner/profile', icon: <User size={20} /> },
   ];
 
