@@ -56,7 +56,7 @@ const buildMembershipWindow = ({ startDate, durationMonths, today = new Date() }
     startDate: normalizedStartDate,
     endDate,
     status: getMembershipStatus(daysLeft),
-    daysLeft: 0
+    daysLeft: daysLeft
   };
 };
 

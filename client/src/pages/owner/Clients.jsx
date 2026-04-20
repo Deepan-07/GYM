@@ -15,7 +15,6 @@ const STATUS_OPTIONS = [
   { value: 'expiring_soon', label: 'Expiring Soon' },
   { value: 'expired', label: 'Expired' },
   { value: 'overdue', label: 'Overdue' },
-  { value: 'pending', label: 'Pending' },
 ];
 
 // ─── Custom Dropdown (replaces native <select> for Dark-theme compatibility) ──
@@ -100,14 +99,14 @@ const Clients = () => {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Get status from URL if present
   const queryParams = new URLSearchParams(location.search);
   const initialStatus = queryParams.get('status') || 'All';
-  
+
   const [filterStatus, setFilterStatus] = useState(initialStatus);
   const [filterPlan, setFilterPlan] = useState('All');
-  
+
   // Sync filter with URL changes
   useEffect(() => {
     const s = new URLSearchParams(location.search).get('status');
