@@ -17,9 +17,34 @@ const getNextSequenceValue = async (name) => {
   return counter.value;
 };
 
-const generateGymId = async (prefix) => {
-  const sequence = await getNextSequenceValue('gymId');
-  return `NEX-${String(sequence).padStart(2, '0')}`;
+const generateGymId = async () => {
+  const prefix = 'NEX';
+
+  // 1. Ensure concurrency safety using an atomic counter
+  const counterName = 'NEX_GYM_SEQUENCE';
+  let sequence = await getNextSequenceValue(counterName);
+
+  // 2. To handle existing data (last count = 5) and ensure continuity:
+  // Fetch the latest gymId starting with NEX- to verify the counter is in sync
+  const lastGym = await Gym.findOne({ gymId: new RegExp(`^${prefix}-`) }).sort({ gymId: -1 });
+  
+  let lastCount = 0;
+  if (lastGym && lastGym.gymId) {
+    const parts = lastGym.gymId.split('-');
+    lastCount = parseInt(parts[1], 10) || 0;
+  }
+
+  // 3. If counter is behind existing records, fast-forward it
+  if (sequence <= lastCount) {
+    const correctedCounter = await Counter.findOneAndUpdate(
+      { name: counterName },
+      { $set: { value: lastCount + 1 } },
+      { new: true, upsert: true }
+    );
+    sequence = correctedCounter.value;
+  }
+
+  return `${prefix}-${String(sequence).padStart(2, '0')}`;
 };
 
 const generateClientId = async (gymIdStr) => {

@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { LayoutDashboard, Users, Tag, CreditCard, AlertCircle, User, UserPlus } from 'lucide-react';
 
 export default function OwnerLayout() {
   const { user, logout } = useAuth();
@@ -11,12 +12,13 @@ export default function OwnerLayout() {
   };
 
   const navItems = [
-    { to: '/owner/dashboard', label: 'Dashboard',  icon: 'grid' },
-    { to: '/owner/clients',   label: 'Clients',    icon: 'users' },
-    { to: '/owner/plans',     label: 'Plans',      icon: 'tag' },
-    { to: '/owner/payments',  label: 'Payments',   icon: 'credit-card' },
-    { to: '/owner/redtag',    label: 'Overdue',    icon: 'alert-circle' },
-    { to: '/owner/profile',   label: 'Profile',    icon: 'user' },
+    { to: '/owner/dashboard', label: 'Dashboard',  icon: LayoutDashboard },
+    { to: '/owner/clients',   label: 'Clients',    icon: Users },
+    { to: '/owner/plans',     label: 'Plans',      icon: Tag },
+    { to: '/owner/payments',  label: 'Payments',   icon: CreditCard },
+    { to: '/owner/redtag',    label: 'Overdue',    icon: AlertCircle },
+    { to: '/owner/requests',  label: 'Requests',   icon: UserPlus },
+    { to: '/owner/profile',   label: 'Profile',    icon: User },
   ];
 
   return (
@@ -69,6 +71,7 @@ export default function OwnerLayout() {
                 transition: 'all 0.15s'
               })}
             >
+              <item.icon size={18} />
               <span>{item.label}</span>
             </NavLink>
           ))}

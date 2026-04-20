@@ -18,9 +18,18 @@ const LoginPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Mobile validation if loginId looks like a phone number (numeric)
+        const loginId = formData.loginId || '';
+        if (/^\d+$/.test(loginId)) {
+            if (!/^[6-9]\d{9}$/.test(loginId)) {
+                return toast.error("Enter a valid 10-digit mobile number starting with 6-9");
+            }
+        }
+
         setLoading(true);
         try {
-            const res = await api.post('/auth/login', { loginId: formData.loginId, password: formData.password });
+            const res = await api.post('/auth/login', { loginId, password: formData.password });
             const { token, role, data } = res.data;
             
             // Reconstruct logic based on provided role by the unified endpoint
@@ -51,8 +60,8 @@ const LoginPage = () => {
 
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div className="space-y-4">
-                        <input name="loginId" value={formData.loginId || ''} placeholder="Email or Phone Number" onChange={handleChange} required className="input-field" />
-                        <input name="password" value={formData.password || ''} type="password" placeholder="Password" onChange={handleChange} required className="input-field" />
+                        <input name="loginId" value={formData.loginId || ''} placeholder="Email or Phone Number" onChange={handleChange} required className="input-field" maxLength="50" />
+                        <input name="password" value={formData.password || ''} type="password" placeholder="Password" onChange={handleChange} required className="input-field" maxLength="20" />
                     </div>
                     <Button type="submit" isLoading={loading} className="w-full text-lg shadow-lg shadow-primary/20">Login to Platform</Button>
                 </form>

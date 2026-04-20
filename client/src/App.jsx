@@ -21,6 +21,8 @@ import OwnerPlans from './pages/owner/Plans';
 import OwnerPayments from './pages/owner/Payments';
 import OwnerRedTag from './pages/owner/RedTag';
 import OwnerProfile from './pages/owner/Profile';
+import OwnerRequests from './pages/owner/ClientRequests';
+import ClientDetail from './pages/owner/ClientDetail';
 
 // Client
 import ClientDashboard from './pages/client/ClientDashboard';
@@ -61,6 +63,8 @@ const App = () => {
               <Route path="payments" element={<OwnerPayments />} />
               <Route path="redtag" element={<OwnerRedTag />} />
               <Route path="profile" element={<OwnerProfile />} />
+              <Route path="requests" element={<OwnerRequests />} />
+              <Route path="clients/:id" element={<ClientDetail />} />
             </Route>
             
             {/* Client Routes */}

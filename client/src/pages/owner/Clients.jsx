@@ -1,170 +1,342 @@
-import React, { useState, useEffect } from 'react';
-// Sidebar removed
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
-import { Search, Filter, Plus, X } from 'lucide-react';
+import { Search, Filter, Plus, X, ChevronDown, Check } from 'lucide-react';
 import Button from '../../components/Button';
 import ClientForm from '../../components/ClientForm';
 import ClientCard from '../../components/ClientCard';
 
-const Clients = () => {
-    const [clients, setClients] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState('All');
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [formInstanceKey, setFormInstanceKey] = useState(0);
-    const [isFormDirty, setIsFormDirty] = useState(false);
+// ─── Status options config ───────────────────────────────────────────────────
+const STATUS_OPTIONS = [
+  { value: 'All', label: 'All Status' },
+  { value: 'active', label: 'Active' },
+  { value: 'upcoming', label: 'Upcoming' },
+  { value: 'expiring_soon', label: 'Expiring Soon' },
+  { value: 'expired', label: 'Expired' },
+  { value: 'overdue', label: 'Overdue' },
+  { value: 'pending', label: 'Pending' },
+];
 
-    const closeAddModal = (force = false) => {
-        if (!force && isFormDirty) {
-            if (!window.confirm("You have unsaved changes. Are you sure you want to close?")) {
-                return;
-            }
-        }
-        setShowAddModal(false);
-        setFormInstanceKey((currentKey) => currentKey + 1);
-        setIsFormDirty(false);
-    };
+// ─── Custom Dropdown (replaces native <select> for Dark-theme compatibility) ──
+const CustomDropdown = ({ value, onChange, options, placeholder = 'Select...' }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
 
-    const fetchClients = async () => {
-        setLoading(true);
-        try {
-            const res = await api.get(`/client?status=${filterStatus}`);
-            setClients(res.data.data);
-        } catch (error) {
-            toast.error("Failed to fetch clients");
-        }
-        setLoading(false);
-    };
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
-    useEffect(() => {
-        fetchClients();
-    }, [filterStatus]);
+  const selected = options.find(o => o.value === value);
+  const isFiltered = value !== 'All' && value !== options[0]?.value;
 
-    const handleDelete = async (id) => {
-        if(window.confirm('Are you sure you want to delete this client?')) {
-            try {
-                await api.delete(`/client/${id}`);
-                toast.success('Client deleted');
-                fetchClients();
-            } catch(e) {
-                toast.error('Failed to delete');
-            }
-        }
-    }
+  return (
+    <div ref={ref} className="relative min-w-[160px]">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setOpen(prev => !prev)}
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md border text-sm font-medium transition-all cursor-pointer
+          ${isFiltered
+            ? 'bg-primary/10 border-primary/50 text-primary'
+            : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-500 hover:text-white'
+          }`}
+      >
+        <span className="flex items-center gap-2 truncate">
+          {selected?.dot && <span className={`w-2 h-2 rounded-full shrink-0 ${selected.dot}`} />}
+          {selected?.label || placeholder}
+        </span>
+        <ChevronDown
+          size={14}
+          className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
 
-    const filteredClients = clients.filter(c => 
-       c.personalInfo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       (c.clientId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-       c.personalInfo.mobileNo.includes(searchTerm)
-    );
-
-    const handleView = (client) => {
-        toast.info(`Viewing ${client.personalInfo.name} will be wired here.`);
-    };
-
-    return (
-        <div className="flex bg-dark h-screen overflow-hidden">
-            <></>
-            <div className="flex-1 overflow-y-auto p-8 pt-10">
-                <div className="flex justify-between items-center mb-8">
-                   <div>
-                       <h1 className="text-3xl font-bold text-white tracking-tight">Clients</h1>
-                       <p className="text-gray-400 mt-1">Manage and monitor all your gym members.</p>
-                   </div>
-                   <Button onClick={() => setShowAddModal(true)} className="gap-2">
-                       <Plus size={18} /> Add Client
-                   </Button>
-                </div>
-
-                {showAddModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                        <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                            <button type="button" onClick={() => closeAddModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-10">
-                                <X size={24} />
-                            </button>
-                            <div className="p-8">
-                                <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-800 pb-4">Enroll New Client</h2>
-                                <ClientForm 
-                                    key={formInstanceKey}
-                                    mode="owner" 
-                                    showCancel
-                                    onCancel={() => closeAddModal(false)}
-                                    onDirtyChange={setIsFormDirty}
-                                    onSuccess={() => { 
-                                        closeAddModal(true); 
-                                        toast.success('Client added successfully');
-                                        fetchClients(); 
-                                    }} 
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <div className="card mb-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-gray-900 border-gray-800">
-                    <div className="relative w-full md:w-96">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={18} />
-                        <input 
-                           type="text" 
-                           placeholder="Search by name, ID or phone..." 
-                           className="input-field pl-10"
-                           value={searchTerm}
-                           onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                    <div className="flex items-center gap-2 w-full md:w-auto text-gray-300">
-                        <Filter size={18} />
-                        <select 
-                           className="input-field py-2 w-full md:w-48 appearance-none"
-                           value={filterStatus}
-                           onChange={(e) => setFilterStatus(e.target.value)}
-                        >
-                            <option value="All">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="expiring_soon">Expiring Soon</option>
-                            <option value="expired">Expired</option>
-                            <option value="overdue">Overdue</option>
-                            <option value="pending">Pending</option>
-                        </select>
-                    </div>
-                </div>
-
-                {loading ? (
-                    <div className="flex justify-center items-center py-20">
-                        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                ) : filteredClients.length === 0 ? (
-                    <div className="card bg-gray-900 border-gray-800 text-center py-16 text-gray-400">No clients found</div>
-                ) : (
-                    <div className="card p-0 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-lg">
-                        {/* List Header */}
-                        <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_2fr_1fr_1fr_1fr] gap-2 px-4 py-4 bg-gray-900/80 border-b border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wider sticky top-0 z-10 backdrop-blur-sm">
-                            <div>Client Info</div>
-                            <div>Mobile</div>
-                            <div>Plan</div>
-                            <div>Duration</div>
-                            <div>Days Left</div>
-                            <div>Status</div>
-                            <div className="text-right pd-pr-4">Actions</div>
-                        </div>
-
-                        <div className="flex flex-col">
-                            {filteredClients.map((client) => (
-                                <ClientCard
-                                    key={client._id}
-                                    client={client}
-                                    onView={handleView}
-                                    onDelete={(selectedClient) => handleDelete(selectedClient._id)}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
+      {/* Dropdown list */}
+      {open && (
+        <div className="absolute top-full mt-1 left-0 w-full z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 text-sm text-left transition-colors
+                ${opt.value === value
+                  ? 'bg-primary/15 text-primary'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                }`}
+            >
+              <span className="flex items-center gap-2">
+                {opt.dot && <span className={`w-2 h-2 rounded-full shrink-0 ${opt.dot}`} />}
+                {opt.label}
+              </span>
+              {opt.value === value && <Check size={13} className="shrink-0 text-primary" />}
+            </button>
+          ))}
         </div>
-    );
+      )}
+    </div>
+  );
+};
+
+// ─── Filter badge chip ────────────────────────────────────────────────────────
+const FilterBadge = ({ label, onClear }) => (
+  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/20 text-primary border border-primary/40">
+    {label}
+    <button onClick={onClear} className="hover:text-white transition-colors leading-none">
+      <X size={11} />
+    </button>
+  </span>
+);
+
+// ─── Main Clients Page ────────────────────────────────────────────────────────
+const Clients = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [clients, setClients] = useState([]);
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Get status from URL if present
+  const queryParams = new URLSearchParams(location.search);
+  const initialStatus = queryParams.get('status') || 'All';
+  
+  const [filterStatus, setFilterStatus] = useState(initialStatus);
+  const [filterPlan, setFilterPlan] = useState('All');
+  
+  // Sync filter with URL changes
+  useEffect(() => {
+    const s = new URLSearchParams(location.search).get('status');
+    if (s) setFilterStatus(s);
+  }, [location.search]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formInstanceKey, setFormInstanceKey] = useState(0);
+  const [isFormDirty, setIsFormDirty] = useState(false);
+
+  // Fetch plans once (for the plan filter dropdown)
+  useEffect(() => {
+    api.get('/plan')
+      .then(res => setPlans(res.data.data || []))
+      .catch(() => { });
+  }, []);
+
+  // Build plan options dynamically from fetched plans
+  const planOptions = [
+    { value: 'All', label: 'All Plans' },
+    ...plans.map(p => ({ value: p.planName, label: p.planName }))
+  ];
+
+  // Fetch clients whenever either filter changes
+  const fetchClients = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filterStatus !== 'All') params.append('status', filterStatus);
+      if (filterPlan !== 'All') params.append('planName', filterPlan);
+      const res = await api.get(`/client?${params.toString()}`);
+      setClients(res.data.data || []);
+    } catch {
+      toast.error('Failed to fetch clients');
+    } finally {
+      setLoading(false);
+    }
+  }, [filterStatus, filterPlan]);
+
+  useEffect(() => { fetchClients(); }, [fetchClients]);
+
+  // Modal helpers
+  const closeAddModal = (force = false) => {
+    if (!force && isFormDirty) {
+      if (!window.confirm('You have unsaved changes. Are you sure you want to close?')) return;
+    }
+    setShowAddModal(false);
+    setFormInstanceKey(k => k + 1);
+    setIsFormDirty(false);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this client?')) {
+      try {
+        await api.delete(`/client/${id}`);
+        toast.success('Client deleted');
+        fetchClients();
+      } catch {
+        toast.error('Failed to delete');
+      }
+    }
+  };
+
+  // Client-side search on top of server-side status+plan filter
+  const filteredClients = clients.filter(c =>
+    c.personalInfo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (c.clientId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.personalInfo.mobileNo.includes(searchTerm)
+  );
+
+  const hasStatusFilter = filterStatus !== 'All';
+  const hasPlanFilter = filterPlan !== 'All';
+  const activeFilterCount = (hasStatusFilter ? 1 : 0) + (hasPlanFilter ? 1 : 0);
+
+  const clearAll = () => { setFilterStatus('All'); setFilterPlan('All'); };
+
+  return (
+    <div className="flex bg-dark h-screen overflow-hidden">
+      <></>
+      <div className="flex-1 overflow-y-auto p-8 pt-10">
+
+        {/* ── Page Header ── */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Clients</h1>
+            <p className="text-gray-400 mt-1">Manage and monitor all your gym members.</p>
+          </div>
+          <Button onClick={() => setShowAddModal(true)} className="gap-2">
+            <Plus size={18} /> Add Client
+          </Button>
+        </div>
+
+        {/* ── Add Client Modal ── */}
+        {showAddModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative shadow-2xl animate-in zoom-in-95 duration-200">
+              <button type="button" onClick={() => closeAddModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-10">
+                <X size={24} />
+              </button>
+              <div className="p-8">
+                <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-800 pb-4">Enroll New Client</h2>
+                <ClientForm
+                  key={formInstanceKey}
+                  mode="owner"
+                  showCancel
+                  onCancel={() => closeAddModal(false)}
+                  onDirtyChange={setIsFormDirty}
+                  onSuccess={() => {
+                    closeAddModal(true);
+                    toast.success('Client added successfully');
+                    fetchClients();
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Search + Filter Bar ── */}
+        <div className="card mb-3 flex flex-col gap-3 bg-gray-900 border-gray-800">
+          <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
+
+            {/* Search */}
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={17} />
+              <input
+                type="text"
+                placeholder="Search by name, ID or phone..."
+                className="input-field pl-10 w-full"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Filters */}
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <Filter size={15} className="text-gray-500" />
+
+              {/* Status */}
+              <CustomDropdown
+                value={filterStatus}
+                onChange={setFilterStatus}
+                options={STATUS_OPTIONS}
+                placeholder="All Status"
+              />
+
+              {/* Plan */}
+              <CustomDropdown
+                value={filterPlan}
+                onChange={setFilterPlan}
+                options={planOptions}
+                placeholder="All Plans"
+              />
+
+              {/* Clear all */}
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={clearAll}
+                  className="text-xs text-gray-400 hover:text-white transition-colors underline underline-offset-2 whitespace-nowrap"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* ── Active filter badges ── */}
+          {activeFilterCount > 0 && (
+            <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-gray-800/60">
+              <span className="text-xs text-gray-500">Filtering by:</span>
+              {hasStatusFilter && (
+                <FilterBadge
+                  label={`Status: ${STATUS_OPTIONS.find(o => o.value === filterStatus)?.label}`}
+                  onClear={() => setFilterStatus('All')}
+                />
+              )}
+              {hasPlanFilter && (
+                <FilterBadge
+                  label={`Plan: ${filterPlan}`}
+                  onClear={() => setFilterPlan('All')}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Result count */}
+        <p className="text-xs text-gray-500 mb-4 px-1">
+          {loading ? 'Loading...' : `${filteredClients.length} client${filteredClients.length !== 1 ? 's' : ''} found`}
+        </p>
+
+        {/* ── Client list ── */}
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : filteredClients.length === 0 ? (
+          <div className="card bg-gray-900 border-gray-800 text-center py-16 text-gray-400">
+            <Filter size={36} className="mx-auto mb-3 opacity-30" />
+            <p className="font-medium">No clients found</p>
+            <p className="text-sm mt-1 text-gray-600">Try adjusting your filters or search.</p>
+          </div>
+        ) : (
+          <div className="card p-0 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-lg">
+            {/* Table header */}
+            <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_2fr_1fr_1fr_1fr] gap-2 px-4 py-4 bg-gray-900/80 border-b border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wider sticky top-0 z-10 backdrop-blur-sm">
+              <div>Client Info</div>
+              <div>Mobile No</div>
+              <div>Plan</div>
+              <div>Duration</div>
+              <div>Days Left</div>
+              <div>Status</div>
+              <div className="text-right">Actions</div>
+            </div>
+            <div className="flex flex-col">
+              {filteredClients.map(client => (
+                <ClientCard
+                  key={client._id}
+                  client={client}
+                  onView={(c) => navigate(`/owner/clients/${c._id}`)}
+                  onDelete={selected => handleDelete(selected._id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
 };
 
 export default Clients;
