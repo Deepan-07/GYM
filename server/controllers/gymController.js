@@ -25,22 +25,57 @@ exports.updateGymProfile = async (req, res, next) => {
     const { gymData, ownerData } = req.body;
     const gymStrId = req.user._id.toString();
 
-    let updatedGym, updatedOwner;
-    
+    const phoneRegex = /^[6-9]\d{9}$/;
+
+    // ─── 1. Gym Data Checks ──────────────────────────────────────────────────
     if (gymData) {
-        if(gymData.password) {
-            // Can't update password like this with findByIdAndUpdate directly cleanly b/c of pre-save hook, 
-            // but let's assume we don't update password here.
-            delete gymData.password;
-        }
-        updatedGym = await Gym.findByIdAndUpdate(gymStrId, gymData, { new: true, runValidators: true }).select('-password');
+      // Duplicate Email Check
+      if (gymData.gymEmail) {
+        const emailExists = await Gym.findOne({ gymEmail: gymData.gymEmail, _id: { $ne: gymStrId } });
+        if (emailExists) return res.status(400).json({ success: false, message: 'Email already exists', field: 'gymEmail' });
+      }
+
+      // Duplicate Contact Check
+      if (gymData.gymContact) {
+        const contactExists = await Gym.findOne({ gymContact: gymData.gymContact, _id: { $ne: gymStrId } });
+        if (contactExists) return res.status(400).json({ success: false, message: 'Phone number already exists', field: 'gymContact' });
+      }
+
+      // Password Safeguard
+      delete gymData.password;
+
+      // Update Gym
+      const gym = await Gym.findByIdAndUpdate(gymStrId, gymData, { new: true, runValidators: true }).select('-password');
+      req.updatedGym = gym; // temp store for response
     }
 
+    // ─── 2. Owner Data Checks ─────────────────────────────────────────────────
     if (ownerData) {
-        updatedOwner = await Owner.findOneAndUpdate({ gymId: gymStrId }, ownerData, { new: true, runValidators: true });
+      // Duplicate Personal Mobile Check
+      if (ownerData.mobileNo) {
+        if (!phoneRegex.test(ownerData.mobileNo)) return res.status(400).json({ success: false, message: 'Enter a valid Indian mobile number', field: 'ownerMobile' });
+        const mobileExists = await Owner.findOne({ mobileNo: ownerData.mobileNo, gymId: { $ne: gymStrId } });
+        if (mobileExists) return res.status(400).json({ success: false, message: 'Phone number already exists', field: 'ownerMobile' });
+      }
+
+      // Duplicate Personal Email Check (mailId)
+      if (ownerData.mailId) {
+        const mailExists = await Owner.findOne({ mailId: ownerData.mailId, gymId: { $ne: gymStrId } });
+        if (mailExists) return res.status(400).json({ success: false, message: 'Email already exists', field: 'ownerEmail' });
+      }
+
+      // Update Owner
+      const owner = await Owner.findOneAndUpdate({ gymId: gymStrId }, ownerData, { new: true, runValidators: true });
+      req.updatedOwner = owner;
     }
 
-    res.status(200).json({ success: true, data: { gym: updatedGym, owner: updatedOwner } });
+    res.status(200).json({ 
+      success: true, 
+      data: { 
+        gym: req.updatedGym || await Gym.findById(gymStrId).select('-password'), 
+        owner: req.updatedOwner || await Owner.findOne({ gymId: gymStrId }) 
+      } 
+    });
   } catch (err) {
     next(err);
   }

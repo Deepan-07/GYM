@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 // Sidebar removed (rendered via OwnerLayout)
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
-import { Users, UserCheck, AlertCircle, AlertTriangle, List, X } from 'lucide-react';
+import { Users, UserCheck, AlertCircle, AlertTriangle, List, X, UserPlus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import ClientForm from '../../components/ClientForm';
+import ClientProfileHeader from '../../components/ClientProfileHeader';
 
 const StatCard = ({ title, value, icon, color }) => (
   <div className={`card relative overflow-hidden group`}>
@@ -21,6 +23,7 @@ const StatCard = ({ title, value, icon, color }) => (
 );
 
 const Dashboard = () => {
+   const navigate = useNavigate();
    const [stats, setStats] = useState(null);
    const [loading, setLoading] = useState(true);
    const [showAddModal, setShowAddModal] = useState(false);
@@ -53,21 +56,6 @@ const Dashboard = () => {
        fetchStats();
    }, []);
 
-   const handleApprove = async (id) => {
-       try {
-           await api.put(`/client/${id}/approve`);
-           toast.success("Client Approved!");
-           fetchStats();
-       } catch(e) { toast.error("Failed to approve"); }
-   };
-
-   const handleReject = async (id) => {
-       try {
-           await api.delete(`/client/${id}`);
-           toast.success("Client request rejected and deleted");
-           fetchStats();
-       } catch(e) { toast.error("Failed to reject"); }
-   };
 
    if(loading) return <div className="flex flex-1 justify-center items-center min-h-screen pt-20"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>;
 
@@ -89,46 +77,15 @@ const Dashboard = () => {
                    </div>
                </div>
 
-               {/* Pending Approvals Section */}
-               {stats?.pendingList?.length > 0 && (
-                   <div className="mb-8 card border-yellow-500/20 bg-yellow-500/5">
-                      <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-yellow-500"></div> Pending Approvals</h3>
-                      <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse">
-                              <thead>
-                                  <tr className="border-b border-gray-700 text-gray-400 text-sm">
-                                      <th className="p-3">Client ID & Name</th>
-                                      <th className="p-3">Phone</th>
-                                      <th className="p-3">Requested Plan</th>
-                                      <th className="p-3">Start Date</th>
-                                      <th className="p-3 text-right">Actions</th>
-                                  </tr>
-                              </thead>
-                              <tbody>
-                                  {stats.pendingList.map(client => (
-                                      <tr key={client._id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                                          <td className="p-3 text-white font-medium">{client.clientId || 'Pending ID on approval'} - {client.personalInfo.name}</td>
-                                          <td className="p-3 text-gray-400">{client.personalInfo.mobileNo}</td>
-                                          <td className="p-3 text-gray-400">{client.membership.planName || 'N/A'}</td>
-                                          <td className="p-3 text-gray-400">{client.membership.startDate ? new Date(client.membership.startDate).toLocaleDateString() : '-'}</td>
-                                          <td className="p-3 text-right space-x-2">
-                                              <button onClick={() => handleApprove(client._id)} className="bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500 hover:text-white px-3 py-1 text-sm rounded transition-colors">Approve</button>
-                                              <button onClick={() => handleReject(client._id)} className="bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white px-3 py-1 text-sm rounded transition-colors">Reject</button>
-                                          </td>
-                                      </tr>
-                                  ))}
-                              </tbody>
-                          </table>
-                      </div>
-                   </div>
-               )}
 
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-10">
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
                    <StatCard title="Total Clients" value={stats?.stats?.totalClients} icon={<Users size={24} className="text-primary" />} color="bg-primary text-primary" />
                    <StatCard title="Active" value={stats?.stats?.activeClients} icon={<UserCheck size={24} className="text-accent" />} color="bg-accent text-accent" />
+                   <div onClick={() => navigate('/owner/requests')} className="cursor-pointer">
+                       <StatCard title="Pending Requests" value={stats?.pendingList?.length || 0} icon={<UserPlus size={24} className="text-yellow-500" />} color="bg-yellow-500 text-yellow-500" />
+                   </div>
                    <StatCard title="Expiring Soon" value={stats?.stats?.expiringSoon} icon={<AlertCircle size={24} className="text-warning" />} color="bg-warning text-warning" />
                    <StatCard title="Overdue" value={stats?.stats?.redTagClients} icon={<AlertTriangle size={24} className="text-alert" />} color="bg-alert text-alert" />
-                   <StatCard title="Total Plans" value={stats?.stats?.totalPlans} icon={<List size={24} className="text-gray-300" />} color="bg-gray-600 text-white" />
                </div>
 
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -136,26 +93,19 @@ const Dashboard = () => {
                   <div className="card">
                      <div className="flex justify-between items-center mb-6">
                         <h3 className="text-lg font-bold text-white flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-warning"></div> Expiring Soon</h3>
-                        <span className="text-primary text-sm font-medium hover:underline cursor-pointer">View All</span>
+                        <span onClick={() => navigate('/owner/clients?status=expiring_soon')} className="text-primary text-sm font-medium hover:underline cursor-pointer">View All</span>
                      </div>
                      {stats?.expiringSoonList?.length === 0 ? (
                          <div className="py-8 text-center text-gray-500 bg-gray-800/20 rounded-lg border border-gray-800 dashed">No clients expiring soon</div>
                      ) : (
-                         <div className="space-y-4">
-                             {stats?.expiringSoonList?.map(client => (
-                                 <div key={client._id} className="flex justify-between items-center p-4 bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-lg transition-colors">
-                                     <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-warning/20 text-warning flex items-center justify-center font-bold">
-                                            {client.avatar}
-                                        </div>
-                                        <div>
-                                           <h4 className="font-semibold text-white">{client.personalInfo.name}</h4>
-                                           <p className="text-xs text-gray-400">{client.membership.planName} • {client.membership.daysLeft} days left</p>
-                                        </div>
-                                     </div>
-                                     <div className="text-right">
-                                         <span className="px-3 py-1 bg-warning/10 text-warning text-xs font-semibold rounded-full">Expiring</span>
-                                     </div>
+                         <div className="space-y-3">
+                             {stats?.expiringSoonList?.slice(0, 3).map(client => (
+                                 <div 
+                                   key={client._id} 
+                                   onClick={() => navigate(`/owner/clients/${client._id}`)}
+                                   className="cursor-pointer"
+                                 >
+                                     <ClientProfileHeader client={client} compact />
                                  </div>
                              ))}
                          </div>
@@ -166,26 +116,19 @@ const Dashboard = () => {
                   <div className="card">
                      <div className="flex justify-between items-center mb-6">
                         <h3 className="text-lg font-bold text-white flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-alert"></div> Overdue</h3>
-                        <span className="text-alert text-sm font-medium hover:underline cursor-pointer">View All</span>
+                        <span onClick={() => navigate('/owner/redtag')} className="text-alert text-sm font-medium hover:underline cursor-pointer">View All</span>
                      </div>
                      {stats?.redTagList?.length === 0 ? (
                          <div className="py-8 text-center text-gray-500 bg-gray-800/20 rounded-lg border border-gray-800 dashed">No overdue clients</div>
                      ) : (
-                         <div className="space-y-4">
-                             {stats?.redTagList?.map(client => (
-                                 <div key={client._id} className="flex justify-between items-center p-4 bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 rounded-lg transition-colors">
-                                     <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-alert/20 text-alert flex items-center justify-center font-bold">
-                                            {client.avatar}
-                                        </div>
-                                        <div>
-                                           <h4 className="font-semibold text-white">{client.personalInfo.name}</h4>
-                                           <p className="text-xs text-gray-400">{client.personalInfo.mobileNo}</p>
-                                        </div>
-                                     </div>
-                                     <button className="bg-alert/10 hover:bg-alert hover:text-white border border-alert/20 text-alert text-xs px-4 py-1.5 rounded-full font-medium transition-colors">
-                                         Renew
-                                     </button>
+                         <div className="space-y-3">
+                             {stats?.redTagList?.slice(0, 3).map(client => (
+                                 <div 
+                                   key={client._id} 
+                                   onClick={() => navigate(`/owner/clients/${client._id}`)}
+                                   className="cursor-pointer"
+                                 >
+                                     <ClientProfileHeader client={client} compact />
                                  </div>
                              ))}
                          </div>

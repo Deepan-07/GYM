@@ -9,12 +9,17 @@ const { buildMembershipWindow } = require('../utils/membership');
 exports.getClients = async (req, res, next) => {
   try {
     const gymIdStr = req.userRole === 'owner' ? req.user.gymId : req.query.gymId;
-    
-    // Optional filtering
-    const { status } = req.query;
+
+    const { status, planName, plan } = req.query;
     let query = { gymId: gymIdStr };
+
     if (status && status !== 'All') {
-      query['membership.status'] = status.toLowerCase().replace(' ', '_');
+      query['membership.status'] = status.toLowerCase().replace(/_/g, ' ').replace(/ /g, '_');
+    }
+
+    const selectedPlan = planName || plan;
+    if (selectedPlan && selectedPlan !== 'All') {
+      query['membership.planName'] = selectedPlan;
     }
 
     const clients = await Client.find(query).sort({ createdAt: -1 });
@@ -43,11 +48,24 @@ exports.getClientProfile = async (req, res, next) => {
 exports.updateClientProfile = async (req, res, next) => {
   try {
     const { personalInfo = {} } = req.body;
-    const client = await Client.findById(req.user._id);
+    const clientId = req.user._id.toString();
+    const phoneRegex = /^[6-9]\d{9}$/;
 
-    if (!client) {
-      return res.status(404).json({ success: false, message: 'Client not found' });
+    // Duplicate Email Check
+    if (personalInfo.email) {
+      const emailExists = await Client.findOne({ 'personalInfo.email': personalInfo.email, _id: { $ne: clientId } });
+      if (emailExists) return res.status(400).json({ success: false, message: 'Email already exists', field: 'email' });
     }
+
+    // Duplicate Mobile Check
+    if (personalInfo.mobileNo) {
+      if (!phoneRegex.test(personalInfo.mobileNo)) return res.status(400).json({ success: false, message: 'Enter a valid Indian mobile number', field: 'mobileNo' });
+      const mobileExists = await Client.findOne({ 'personalInfo.mobileNo': personalInfo.mobileNo, _id: { $ne: clientId } });
+      if (mobileExists) return res.status(400).json({ success: false, message: 'Phone number already exists', field: 'mobileNo' });
+    }
+
+    const client = await Client.findById(clientId);
+    if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
 
     client.personalInfo = {
       ...client.personalInfo.toObject(),
@@ -55,7 +73,6 @@ exports.updateClientProfile = async (req, res, next) => {
     };
 
     await client.save();
-
     res.status(200).json({ success: true, data: client });
   } catch (err) {
     next(err);
@@ -123,11 +140,11 @@ exports.addClient = async (req, res, next) => {
 // @access  Private (Owner)
 exports.getClientById = async (req, res, next) => {
   try {
-     const client = await Client.findById(req.params.id).populate('paymentHistory');
-     if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
-     res.status(200).json({ success: true, data: client });
+    const client = await Client.findById(req.params.id).populate('paymentHistory');
+    if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
+    res.status(200).json({ success: true, data: client });
   } catch (err) {
-      next(err);
+    next(err);
   }
 };
 

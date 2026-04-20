@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 // Sidebar removed
+import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { AlertOctagon } from 'lucide-react';
 import ClientCard from '../../components/ClientCard';
 
 const RedTag = () => {
+    const navigate = useNavigate();
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -26,7 +28,7 @@ const RedTag = () => {
     };
 
     const handleView = (client) => {
-        toast.info(`Viewing ${client.personalInfo.name} will be wired here.`);
+        navigate(`/owner/clients/${client._id}`);
     };
 
     return (

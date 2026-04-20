@@ -43,7 +43,7 @@ exports.registerGymOwner = async (req, res, next) => {
     const gymExists = await Gym.findOne({ gymEmail });
     if (gymExists) return res.status(400).json({ success: false, message: 'Gym with this email already exists' });
 
-    const newGymId = await generateGymId(gymIdPrefix);
+    const newGymId = await generateGymId();
 
     const gym = await Gym.create({
       gymId: newGymId,

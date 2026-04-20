@@ -19,7 +19,7 @@ const Hero = () => {
             Login
           </Link>
           <Link 
-            to="/register/gym" 
+            to="/register" 
             className="px-8 py-3 bg-gray-100 text-gray-900 font-medium rounded-xl hover:bg-gray-200 transition w-full sm:w-auto text-center border border-gray-200"
           >
             Register Gym

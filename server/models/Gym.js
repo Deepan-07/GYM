@@ -4,15 +4,15 @@ const bcrypt = require('bcryptjs');
 const gymSchema = new mongoose.Schema({
   gymId: { type: String, required: true, unique: true, trim: true },
   gymIdPrefix: { type: String },
-  gymName: { type: String, required: true },
+  gymName: { type: String, required: true, maxlength: 20 },
   gst: { type: String },
-  tagline: { type: String },
-  address: { type: String, required: true },
-  location: { type: String, required: true },
+  tagline: { type: String, maxlength: 20 },
+  address: { type: String, required: true, maxlength: 100 },
+  location: { type: String, required: true, maxlength: 20 },
   gymEmail: { type: String, required: true, unique: true },
   gymContact: { type: String, required: true, unique: true },
   socialMediaLinks: [{ platform: String, url: String }],
-  gymType: { type: String },
+  gymType: { type: String, maxlength: 20 },
   operatingDays: [{ type: String }],
   operatingHours: {
     open: { type: String },
@@ -20,13 +20,13 @@ const gymSchema = new mongoose.Schema({
   },
   password: { type: String, required: true },
   billingInfo: {
-    billingIdPrefix: String,
+    billingIdPrefix: { type: String, maxlength: 5 },
     helpContact: String,
     gst: String,
     logo: String,
-    addressOnBill: String,
-    regards: String,
-    greetingText: String
+    addressOnBill: { type: String, maxlength: 25 },
+    regards: { type: String, maxlength: 20 },
+    greetingText: { type: String, maxlength: 20 }
   },
   reminderSettings: {
     whatsappNumber: String,
@@ -37,14 +37,14 @@ const gymSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
-gymSchema.pre('save', async function(next) {
+gymSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
-gymSchema.methods.matchPassword = async function(enteredPassword) {
+gymSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

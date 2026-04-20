@@ -7,26 +7,27 @@ import { toast } from 'react-toastify';
 import Button from './Button';
 import { useAuth } from '../context/AuthContext';
 
-const phoneError = 'Please enter a valid 10-digit phone number';
+const phoneError = 'Enter a valid 10-digit Indian mobile number';
+const phoneRegex = /^[6-9]\d{9}$/;
 const passwordError = 'Password must be at least 8 characters with 1 uppercase and 1 number';
 
 const getValidationSchema = (mode) => yup.object({
-  gymId: mode === 'self' ? yup.string().trim().required('Gym ID is required') : yup.string().nullable(),
+  gymId: mode === 'self' ? yup.string().trim().required('Gym ID is required').matches(/^[A-Z]{3}-\d{2}$/, 'Format: PREFIX-01') : yup.string().nullable(),
   gymName: mode === 'self' ? yup.string().trim().required('Gym Name is required') : yup.string().nullable(),
-  name: yup.string().trim().required('Name is required'),
+  name: yup.string().trim().required('Name is required').max(20, 'Max 20 chars'),
   gender: yup.string().required('Gender is required'),
   email: yup.string().trim().email('Please enter a valid email address').required('Email is required'),
-  dob: yup.date().required('Date of birth is required').test('age', 'Must be at least 14 years old', function(value) {
-     if (!value) return false;
-     const age = new Date().getFullYear() - new Date(value).getFullYear();
-     return age >= 14;
+  dob: yup.date().required('Date of birth is required').test('age', 'Must be at least 14 years old', function (value) {
+    if (!value) return false;
+    const age = new Date().getFullYear() - new Date(value).getFullYear();
+    return age >= 14;
   }),
-  mobileNo: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError),
-  address: yup.string().trim().required('Address is required').max(200, 'Max 200 limit'),
-  emergencyContact: yup.string().matches(/^[0-9]{10}$/, phoneError).required(phoneError).notOneOf([yup.ref('mobileNo')], 'Must be different from Mobile Number'),
+  mobileNo: yup.string().matches(phoneRegex, phoneError).required(phoneError),
+  address: yup.string().trim().required('Address is required').max(100, 'Max 100 chars'),
+  emergencyContact: yup.string().matches(phoneRegex, phoneError).required(phoneError).notOneOf([yup.ref('mobileNo')], 'Must be different from Mobile Number'),
   medicalCondition: yup.string().trim().nullable(),
   planId: yup.string().required('Please select a plan'),
-  startDate: yup.date().required('Start date is required').test('is-today-or-future', 'Start date cannot be in the past', function(value) {
+  startDate: yup.date().required('Start date is required').test('is-today-or-future', 'Start date cannot be in the past', function (value) {
     if (!value) return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -35,10 +36,10 @@ const getValidationSchema = (mode) => yup.object({
     return selectedDate >= today;
   }),
   password: ['self', 'owner'].includes(mode)
-    ? yup.string().min(8, passwordError).matches(/^(?=.*[A-Z])(?=.*\d).+$/, passwordError).required(passwordError)
+    ? yup.string().min(8, passwordError).max(20, 'Max 20 chars').matches(/^(?=.*[A-Z])(?=.*\d).+$/, passwordError).required(passwordError)
     : yup.string().nullable(),
   confirmPassword: ['self', 'owner'].includes(mode)
-    ? yup.string().oneOf([yup.ref('password')], 'Passwords do not match').required('Please confirm your password')
+    ? yup.string().max(20, 'Max 20 chars').oneOf([yup.ref('password')], 'Passwords do not match').required('Please confirm your password')
     : yup.string().nullable()
 });
 
@@ -127,7 +128,7 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
     }
   };
 
-  const showFieldError = (field) => Boolean(errors[field] && (touchedFields[field] || isSubmitted));
+  const showFieldError = (field) => Boolean(errors[field]);
   const fieldClassName = (field, extra = '') => `input-field ${extra} ${showFieldError(field) ? 'border-red-500' : ''}`.trim();
 
   const hasValue = (field) => {
@@ -205,19 +206,19 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
     if (isValid) {
       setLoading(true);
       try {
-         await api.post('/auth/check-exists', { email: values.email, phone: values.mobileNo });
-         setStep(2);
-      } catch(err) {
-         if (err.response?.status === 409) {
-            toast.error(err.response.data.message);
-            if (err.response.data.message.toLowerCase().includes('email')) {
-               setError('email', { type: 'manual', message: 'Email already exists' });
-            } else {
-               setError('mobileNo', { type: 'manual', message: 'Phone number already exists' });
-            }
-         }
+        await api.post('/auth/check-exists', { email: values.email, phone: values.mobileNo });
+        setStep(2);
+      } catch (err) {
+        if (err.response?.status === 409) {
+          toast.error(err.response.data.message);
+          if (err.response.data.message.toLowerCase().includes('email')) {
+            setError('email', { type: 'manual', message: 'Email already exists' });
+          } else {
+            setError('mobileNo', { type: 'manual', message: 'Phone number already exists' });
+          }
+        }
       } finally {
-         setLoading(false);
+        setLoading(false);
       }
     } else {
       toast.error('Please fix errors to proceed.');
@@ -226,26 +227,26 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
 
   const handleOwnerSubmit = async () => {
     const isValid = await trigger(ownerRequiredFields);
-    
+
     if (isValid) {
-       setLoading(true);
-       try {
-          // Additional check for owner adding client
-          await api.post('/auth/check-exists', { email: values.email, phone: values.mobileNo });
-          handleSubmit(onSubmit)();
-       } catch (err) {
-          if (err.response?.status === 409) {
-             toast.error(err.response.data.message);
-             if (err.response.data.message.toLowerCase().includes('email')) {
-                setError('email', { type: 'manual', message: 'Email already exists' });
-             } else {
-                setError('mobileNo', { type: 'manual', message: 'Phone number already exists' });
-             }
+      setLoading(true);
+      try {
+        // Additional check for owner adding client
+        await api.post('/auth/check-exists', { email: values.email, phone: values.mobileNo });
+        handleSubmit(onSubmit)();
+      } catch (err) {
+        if (err.response?.status === 409) {
+          toast.error(err.response.data.message);
+          if (err.response.data.message.toLowerCase().includes('email')) {
+            setError('email', { type: 'manual', message: 'Email already exists' });
+          } else {
+            setError('mobileNo', { type: 'manual', message: 'Phone number already exists' });
           }
-          setLoading(false);
-       }
+        }
+        setLoading(false);
+      }
     } else {
-       toast.error('Please fix the highlighted errors before submitting.');
+      toast.error('Please fix the highlighted errors before submitting.');
     }
   };
 
@@ -268,12 +269,13 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
     return (
       <>
         <div>
-          <p className="text-xs text-gray-400 mb-1">Gym ID</p>
+          <p className="text-xs text-gray-400 mb-1">Gym ID <span className="text-red-500">*</span></p>
           <input
             {...register('gymId')}
-            placeholder="Enter Gym ID (e.g. DNB-01)"
+            placeholder="Enter Gym ID (e.g. NEX-01)"
             onBlur={fetchGymName}
             className={fieldClassName('gymId', 'uppercase')}
+            maxLength="6"
           />
           {fetchingGym && <p className="text-xs text-primary mt-1">Verifying gym...</p>}
           {showFieldError('gymId') && <p className="text-red-500 text-xs mt-1">{errors.gymId.message}</p>}
@@ -300,13 +302,13 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
       {renderGymContext()}
 
       <div>
-        <p className="text-xs text-gray-400 mb-1">Full Name</p>
-        <input {...register('name')} placeholder="Full Name" className={fieldClassName('name')} />
+        <p className="text-xs text-gray-400 mb-1">Full Name <span className="text-red-500">*</span></p>
+        <input {...register('name')} placeholder="Full Name" className={fieldClassName('name')} maxLength="20" />
         {showFieldError('name') && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
       </div>
 
       <div>
-        <p className="text-xs text-gray-400 mb-1">Gender</p>
+        <p className="text-xs text-gray-400 mb-1">Gender <span className="text-red-500">*</span></p>
         <select {...register('gender')} className={fieldClassName('gender', 'text-gray-300 bg-gray-900')}>
           <option value="">Select Gender</option>
           <option value="Male">Male</option>
@@ -317,50 +319,50 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
       </div>
 
       <div>
-        <p className="text-xs text-gray-400 mb-1">Email</p>
+        <p className="text-xs text-gray-400 mb-1">Email <span className="text-red-500">*</span></p>
         <input {...register('email')} type="email" placeholder="Email Address" className={fieldClassName('email')} />
         {showFieldError('email') && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
       </div>
 
       <div>
-        <p className="text-xs text-gray-400 mb-1">Date of Birth</p>
+        <p className="text-xs text-gray-400 mb-1">Date of Birth <span className="text-red-500">*</span></p>
         <input {...register('dob')} type="date" className={fieldClassName('dob', 'text-gray-300')} />
         {showFieldError('dob') && <p className="text-red-500 text-xs mt-1">{errors.dob.message}</p>}
       </div>
 
       <div>
-        <p className="text-xs text-gray-400 mb-1">Mobile Number</p>
-        <input {...register('mobileNo')} type="number" placeholder="10-digit mobile number" className={fieldClassName('mobileNo')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
+        <p className="text-xs text-gray-400 mb-1">Mobile Number <span className="text-red-500">*</span></p>
+        <input {...register('mobileNo')} type="tel" placeholder="10-digit mobile number" className={fieldClassName('mobileNo')} onInput={(e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10) }} maxLength="10" />
         {showFieldError('mobileNo') && <p className="text-red-500 text-xs mt-1">{errors.mobileNo.message}</p>}
       </div>
 
       <div>
-        <p className="text-xs text-gray-400 mb-1">Emergency Contact</p>
-        <input {...register('emergencyContact')} type="number" placeholder="10-digit emergency contact" className={fieldClassName('emergencyContact')} min="0" onKeyDown={(e) => { if (e.target.value.length >= 10 && e.key !== 'Backspace' && e.key !== 'Tab' && !e.ctrlKey) e.preventDefault(); }} />
+        <p className="text-xs text-gray-400 mb-1">Emergency Contact <span className="text-red-500">*</span></p>
+        <input {...register('emergencyContact')} type="tel" placeholder="10-digit emergency contact" className={fieldClassName('emergencyContact')} onInput={(e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10) }} maxLength="10" />
         {showFieldError('emergencyContact') && <p className="text-red-500 text-xs mt-1">{errors.emergencyContact.message}</p>}
       </div>
 
       <div className="md:col-span-2">
-        <p className="text-xs text-gray-400 mb-1">Address</p>
-        <textarea {...register('address')} placeholder="Residential address" className={fieldClassName('address', 'h-20 resize-none')} />
+        <p className="text-xs text-gray-400 mb-1">Address <span className="text-red-500">*</span></p>
+        <textarea {...register('address')} placeholder="Residential address" className={fieldClassName('address', 'h-20 resize-none')} maxLength="100" />
         {showFieldError('address') && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
       </div>
 
       <div className="md:col-span-2">
         <p className="text-xs text-gray-400 mb-1">Medical Condition (Optional)</p>
-        <textarea {...register('medicalCondition')} placeholder="Any medical condition or injury history" className="input-field h-20 resize-none" />
+        <textarea {...register('medicalCondition')} placeholder="Any medical condition or injury history" className="input-field h-20 resize-none" maxLength="100" />
       </div>
 
       {isOwner && (
         <>
           <div>
-            <p className="text-xs text-gray-400 mb-1">Password</p>
-            <input {...register('password')} type="password" placeholder="Create password" className={fieldClassName('password')} />
+            <p className="text-xs text-gray-400 mb-1">Password <span className="text-red-500">*</span></p>
+            <input {...register('password')} type="password" placeholder="Create password" className={fieldClassName('password')} maxLength="20" />
             {showFieldError('password') && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
           </div>
           <div>
-            <p className="text-xs text-gray-400 mb-1">Confirm Password</p>
-            <input {...register('confirmPassword')} type="password" placeholder="Confirm password" className={fieldClassName('confirmPassword')} />
+            <p className="text-xs text-gray-400 mb-1">Confirm Password <span className="text-red-500">*</span></p>
+            <input {...register('confirmPassword')} type="password" placeholder="Confirm password" className={fieldClassName('confirmPassword')} maxLength="20" />
             {showFieldError('confirmPassword') && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
           </div>
         </>
@@ -375,7 +377,7 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
       </div>
 
       <div className="md:col-span-2">
-        <p className="text-xs text-gray-400 mb-1">Select Plan</p>
+        <p className="text-xs text-gray-400 mb-1">Select Plan <span className="text-red-500">*</span></p>
         <select {...register('planId')} className={fieldClassName('planId', 'text-gray-300 bg-gray-900')}>
           <option value="">Select a membership plan</option>
           {plans.map((plan) => (
@@ -389,7 +391,7 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
       </div>
 
       <div>
-        <p className="text-xs text-gray-400 mb-1">Membership Start Date</p>
+        <p className="text-xs text-gray-400 mb-1">Membership Start Date <span className="text-red-500">*</span></p>
         <input {...register('startDate')} min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]} type="date" className={fieldClassName('startDate', 'text-gray-300')} />
         {showFieldError('startDate') && <p className="text-red-500 text-xs mt-1">{errors.startDate.message}</p>}
       </div>
@@ -400,13 +402,13 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
             <h3 className="text-lg text-white mb-3">Security</h3>
           </div>
           <div>
-            <p className="text-xs text-gray-400 mb-1">Password</p>
-            <input {...register('password')} type="password" placeholder="Create password" className={fieldClassName('password')} />
+            <p className="text-xs text-gray-400 mb-1">Password <span className="text-red-500">*</span></p>
+            <input {...register('password')} type="password" placeholder="Create password" className={fieldClassName('password')} maxLength="20" />
             {showFieldError('password') && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
           </div>
           <div>
-            <p className="text-xs text-gray-400 mb-1">Confirm Password</p>
-            <input {...register('confirmPassword')} type="password" placeholder="Confirm password" className={fieldClassName('confirmPassword')} />
+            <p className="text-xs text-gray-400 mb-1">Confirm Password <span className="text-red-500">*</span></p>
+            <input {...register('confirmPassword')} type="password" placeholder="Confirm password" className={fieldClassName('confirmPassword')} maxLength="20" />
             {showFieldError('confirmPassword') && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
           </div>
         </>

@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const ownerSchema = new mongoose.Schema({
   gymId: { type: mongoose.Schema.Types.ObjectId, ref: 'Gym', required: true },
-  name: { type: String, required: true },
+  name: { type: String, required: true, maxlength: 20 },
   mobileNo: { type: String, required: true },
   mailId: { type: String, required: true },
   role: { type: String, default: 'Owner' }
