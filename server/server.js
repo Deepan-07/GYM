@@ -65,6 +65,7 @@ app.use('/api/admin', require('./routes/admin'));
 // Error Handler Middleware
 app.use(errorHandler);
 
+
 const PORT = process.env.PORT || 5000;
 
 connectDB().then(() => {

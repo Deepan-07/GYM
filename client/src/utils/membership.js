@@ -43,9 +43,7 @@ export const calculateDaysLeft = (startDateValue, endDateValue) => {
     }
   }
 
-  if (today.getTime() > endDate.getTime()) {
-    return 0;
-  }
+
 
   return Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 };
