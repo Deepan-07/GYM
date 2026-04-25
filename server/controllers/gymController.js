@@ -88,16 +88,16 @@ exports.getDashboardStats = async (req, res, next) => {
   try {
     const gymIdStr = req.user.gymId;
 
-    const totalClients = await Client.countDocuments({ gymId: gymIdStr });
-    const activeClients = await Client.countDocuments({ gymId: gymIdStr, 'membership.status': 'active' });
-    const expiringSoon = await Client.countDocuments({ gymId: gymIdStr, 'membership.status': 'expiring_soon' });
-    const overdueClients = await Client.countDocuments({ gymId: gymIdStr, 'membership.status': 'overdue' });
+    const totalClients = await Client.countDocuments({ gymId: gymIdStr, isActive: true });
+    const activeClients = await Client.countDocuments({ gymId: gymIdStr, 'membership.status': 'active', isActive: true });
+    const expiringSoon = await Client.countDocuments({ gymId: gymIdStr, 'membership.status': 'expiring_soon', isActive: true });
+    const overdueClients = await Client.countDocuments({ gymId: gymIdStr, 'membership.status': 'overdue', isActive: true });
     const totalPlans = await Plan.countDocuments({ gymId: gymIdStr, isActive: true });
 
     // Fetch lists
-    const expiringSoonList = await Client.find({ gymId: gymIdStr, 'membership.status': 'expiring_soon' }).limit(3);
-    const overdueList = await Client.find({ gymId: gymIdStr, 'membership.status': 'overdue' }).limit(3);
-    const pendingList = await Client.find({ gymId: gymIdStr, 'membership.requestApproved': false });
+    const expiringSoonList = await Client.find({ gymId: gymIdStr, 'membership.status': 'expiring_soon', isActive: true }).limit(3);
+    const overdueList = await Client.find({ gymId: gymIdStr, 'membership.status': 'overdue', isActive: true }).limit(3);
+    const pendingList = await Client.find({ gymId: gymIdStr, 'membership.requestApproved': false, isActive: true });
 
     res.status(200).json({
       success: true,

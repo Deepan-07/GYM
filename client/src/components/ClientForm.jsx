@@ -26,15 +26,9 @@ const getValidationSchema = (mode) => yup.object({
   address: yup.string().trim().required('Address is required').max(100, 'Max 100 chars'),
   emergencyContact: yup.string().matches(phoneRegex, phoneError).required(phoneError).notOneOf([yup.ref('mobileNo')], 'Must be different from Mobile Number'),
   medicalCondition: yup.string().trim().nullable(),
-  planId: yup.string().required('Please select a plan'),
-  startDate: yup.date().required('Start date is required').test('is-today-or-future', 'Start date cannot be in the past', function (value) {
-    if (!value) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const selectedDate = new Date(value);
-    selectedDate.setHours(0, 0, 0, 0);
-    return selectedDate >= today;
-  }),
+  planId: yup.string().nullable(),
+  startDate: yup.date().required('Start date is required'),
+  planType: yup.string().required('Membership plan is required'),
   password: ['self', 'owner'].includes(mode)
     ? yup.string().min(8, passwordError).max(20, 'Max 20 chars').matches(/^(?=.*[A-Z])(?=.*\d).+$/, passwordError).required(passwordError)
     : yup.string().nullable(),
@@ -44,8 +38,8 @@ const getValidationSchema = (mode) => yup.object({
 });
 
 const selfStepOneFields = ['gymId', 'gymName', 'name', 'gender', 'email', 'dob', 'mobileNo', 'address', 'emergencyContact'];
-const selfStepTwoFields = ['planId', 'startDate', 'password', 'confirmPassword'];
-const ownerRequiredFields = ['name', 'gender', 'email', 'dob', 'mobileNo', 'address', 'emergencyContact', 'password', 'confirmPassword', 'planId', 'startDate'];
+const selfStepTwoFields = ['planType', 'startDate', 'password', 'confirmPassword'];
+const ownerRequiredFields = ['name', 'gender', 'email', 'dob', 'mobileNo', 'address', 'emergencyContact', 'password', 'confirmPassword', 'planType', 'startDate'];
 
 const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, onDirtyChange }) => {
   const { user } = useAuth();
@@ -70,7 +64,8 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
     defaultValues: {
       gymId: isOwner ? user?.gymId || '' : '',
       gymName: isOwner ? user?.gymName || '' : '',
-      medicalCondition: ''
+      medicalCondition: '',
+      planType: ''
     },
     mode: 'onChange',
     reValidateMode: 'onChange'
@@ -138,6 +133,7 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
       return value.length > 0;
     }
 
+    if (field === 'customMonths' && values.planType !== 'Custom') return true;
     return value !== undefined && value !== null && String(value).trim() !== '';
   };
 
@@ -166,7 +162,8 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
           password: data.password,
           membership: {
             planId: data.planId,
-            startDate: data.startDate
+            startDate: data.startDate,
+            planType: data.planType
           }
         };
 
@@ -186,7 +183,8 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
           password: data.password,
           confirmPassword: data.confirmPassword,
           planId: data.planId,
-          startDate: data.startDate
+          startDate: data.startDate,
+          planType: data.planType
         };
 
         await api.post('/auth/client/register', payload);
@@ -377,22 +375,31 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
       </div>
 
       <div className="md:col-span-2">
-        <p className="text-xs text-gray-400 mb-1">Select Plan <span className="text-red-500">*</span></p>
-        <select {...register('planId')} className={fieldClassName('planId', 'text-gray-300 bg-gray-900')}>
-          <option value="">Select a membership plan</option>
-          {plans.map((plan) => (
+        <p className="text-xs text-gray-400 mb-1">Membership Plan <span className="text-red-500">*</span></p>
+        <select
+          {...register('planType')}
+          className={fieldClassName('planType', 'text-gray-300 bg-gray-900')}
+          onChange={(e) => {
+            const val = e.target.value;
+            setValue('planType', val);
+            setValue('planId', val);
+          }}
+        >
+          <option value="">Select a plan</option>
+          {plans.filter(p => !p.isCustom).map((plan) => (
             <option key={plan._id} value={plan._id}>
-              {plan.planName} - {plan.durationMonths} months
+              {plan.name} ({plan.durationMonths} months)
             </option>
           ))}
+
         </select>
-        {showFieldError('planId') && <p className="text-red-500 text-xs mt-1">{errors.planId.message}</p>}
+        {showFieldError('planType') && <p className="text-red-500 text-xs mt-1">{errors.planType.message}</p>}
         {!isOwner && plans.length === 0 && <p className="text-yellow-500 text-xs mt-1">Verify the Gym ID first to load that gym&apos;s plans.</p>}
       </div>
 
       <div>
         <p className="text-xs text-gray-400 mb-1">Membership Start Date <span className="text-red-500">*</span></p>
-        <input {...register('startDate')} min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]} type="date" className={fieldClassName('startDate', 'text-gray-300')} />
+        <input {...register('startDate')} type="date" className={fieldClassName('startDate', 'text-gray-300')} />
         {showFieldError('startDate') && <p className="text-red-500 text-xs mt-1">{errors.startDate.message}</p>}
       </div>
 

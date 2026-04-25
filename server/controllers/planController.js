@@ -5,15 +5,32 @@ const Plan = require('../models/Plan');
 // @access  Private (Owner)
 exports.createPlan = async (req, res, next) => {
   try {
-    const { planName, durationMonths, price, description } = req.body;
-    const gymId = req.user.gymId; // string prefix format
+    const { name, durationMonths, price, description, isCustom } = req.body;
+    const gymId = req.user.gymId;
+
+    if (!price) {
+      return res.status(400).json({ success: false, message: 'Price is required' });
+    }
+
+    if (isCustom) {
+      const existingPlan = await Plan.findOne({ name, gymId, isActive: true });
+      if (existingPlan) {
+        return res.status(400).json({ success: false, message: 'Plan already exists' });
+      }
+    } else {
+      const existingPlan = await Plan.findOne({ durationMonths, isCustom: false, gymId, isActive: true });
+      if (existingPlan) {
+        return res.status(400).json({ success: false, message: 'Standard plan already created' });
+      }
+    }
 
     const plan = await Plan.create({
       gymId,
-      planName,
+      name,
       durationMonths,
       price,
-      description
+      description,
+      isCustom: !!isCustom
     });
 
     res.status(201).json({ success: true, data: plan });
@@ -41,6 +58,7 @@ exports.getPlans = async (req, res, next) => {
     }
 
     const plans = await Plan.find({ gymId, isActive: true });
+    
     res.status(200).json({ success: true, data: plans });
   } catch (err) {
     next(err);
@@ -52,8 +70,8 @@ exports.getPlans = async (req, res, next) => {
 // @access  Private (Owner)
 exports.updatePlan = async (req, res, next) => {
   try {
-    const { planName, durationMonths, price, description } = req.body;
-    const plan = await Plan.findByIdAndUpdate(req.params.id, { planName, durationMonths, price, description }, { new: true, runValidators: true });
+    const { name, durationMonths, price, description } = req.body;
+    const plan = await Plan.findByIdAndUpdate(req.params.id, { name, durationMonths, price, description }, { new: true, runValidators: true });
     if (!plan) return res.status(404).json({ success: false, message: 'Plan not found' });
     res.status(200).json({ success: true, data: plan });
   } catch (err) {

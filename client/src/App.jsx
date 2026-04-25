@@ -17,6 +17,7 @@ import RegisterPage from './pages/RegisterPage';
 import OwnerLayout from './layouts/OwnerLayout';
 import OwnerDashboard from './pages/owner/Dashboard';
 import OwnerClients from './pages/owner/Clients';
+import OwnerInactiveClients from './pages/owner/InactiveClients';
 import OwnerPlans from './pages/owner/Plans';
 import OwnerPayments from './pages/owner/Payments';
 import OwnerRedTag from './pages/owner/RedTag';
@@ -59,6 +60,7 @@ const App = () => {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<OwnerDashboard />} />
               <Route path="clients" element={<OwnerClients />} />
+              <Route path="inactive-clients" element={<OwnerInactiveClients />} />
               <Route path="plans" element={<OwnerPlans />} />
               <Route path="payments" element={<OwnerPayments />} />
               <Route path="redtag" element={<OwnerRedTag />} />

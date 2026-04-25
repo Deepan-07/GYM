@@ -6,7 +6,7 @@ const { buildMembershipWindow } = require('../utils/membership');
 cron.schedule('* * * * *', async () => {
   console.log('Running statusUpdater job...');
   try {
-    const clients = await Client.find({ 'membership.requestApproved': true });
+    const clients = await Client.find({ 'membership.requestApproved': true, isActive: true });
 
     for (let client of clients) {
       if (!client.membership.startDate || !client.membership.durationMonths) continue;

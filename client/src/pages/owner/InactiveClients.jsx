@@ -91,8 +91,8 @@ const FilterBadge = ({ label, onClear }) => (
   </span>
 );
 
-// ─── Main Clients Page ────────────────────────────────────────────────────────
-const Clients = () => {
+// ─── Main Inactive Clients Page ──────────────────────────────────────────────────
+const InactiveClients = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [clients, setClients] = useState([]);
@@ -136,7 +136,7 @@ const Clients = () => {
       const params = new URLSearchParams();
       if (filterStatus !== 'All') params.append('status', filterStatus);
       if (filterPlan !== 'All') params.append('planName', filterPlan);
-      const res = await api.get(`/client?${params.toString()}`);
+      const res = await api.get(`/client/inactive?${params.toString()}`);
       setClients(res.data.data || []);
     } catch {
       toast.error('Failed to fetch clients');
@@ -157,14 +157,14 @@ const Clients = () => {
     setIsFormDirty(false);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to deactivate this client?')) {
+  const handleReactivate = async (id) => {
+    if (window.confirm('Are you sure you want to reactivate this client?')) {
       try {
-        await api.delete(`/client/${id}`);
-        toast.success('Client deactivated');
+        await api.put(`/client/${id}/reactivate`);
+        toast.success('Client reactivated');
         fetchClients();
       } catch {
-        toast.error('Failed to deactivate');
+        toast.error('Failed to reactivate');
       }
     }
   };
@@ -190,39 +190,10 @@ const Clients = () => {
         {/* ── Page Header ── */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Clients</h1>
-            <p className="text-gray-400 mt-1">Manage and monitor all your gym members.</p>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Inactive Clients</h1>
+            <p className="text-gray-400 mt-1">Manage deactivated gym members.</p>
           </div>
-          <Button onClick={() => setShowAddModal(true)} className="gap-2">
-            <Plus size={18} /> Add Client
-          </Button>
         </div>
-
-        {/* ── Add Client Modal ── */}
-        {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative shadow-2xl animate-in zoom-in-95 duration-200">
-              <button type="button" onClick={() => closeAddModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-10">
-                <X size={24} />
-              </button>
-              <div className="p-8">
-                <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-800 pb-4">Enroll New Client</h2>
-                <ClientForm
-                  key={formInstanceKey}
-                  mode="owner"
-                  showCancel
-                  onCancel={() => closeAddModal(false)}
-                  onDirtyChange={setIsFormDirty}
-                  onSuccess={() => {
-                    closeAddModal(true);
-                    toast.success('Client added successfully');
-                    fetchClients();
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ── Search + Filter Bar ── */}
         <div className="card mb-3 flex flex-col gap-3 bg-gray-900 border-gray-800">
@@ -326,7 +297,8 @@ const Clients = () => {
                   key={client._id}
                   client={client}
                   onView={(c) => navigate(`/owner/clients/${c._id}`)}
-                  onDelete={selected => handleDelete(selected._id)}
+                  showReactivate={true}
+                  onReactivate={selected => handleReactivate(selected._id)}
                 />
               ))}
             </div>
@@ -338,4 +310,4 @@ const Clients = () => {
   );
 };
 
-export default Clients;
+export default InactiveClients;

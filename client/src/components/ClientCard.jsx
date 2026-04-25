@@ -12,7 +12,7 @@ const statusStyles = {
   pending: 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
 };
 
-const ClientCard = ({ client, onView, onDelete, onRenew, showRenew = false }) => {
+const ClientCard = ({ client, onView, onDelete, onRenew, onReactivate, showRenew = false, showReactivate = false }) => {
   const name = client?.personalInfo?.name || 'Client';
   const avatarText = client?.avatar || name.charAt(0).toUpperCase();
   const status = client?.membership?.status || 'pending';
@@ -79,13 +79,17 @@ const ClientCard = ({ client, onView, onDelete, onRenew, showRenew = false }) =>
             <Eye size={14} /> View
           </Button>
 
-          {showRenew ? (
+          {showReactivate ? (
+            <Button type="button" variant="secondary" onClick={() => onReactivate?.(client)} className="!px-3 !py-1.5 text-xs text-emerald-400 border-emerald-500/20 hover:border-emerald-400 hover:text-emerald-300">
+              <RefreshCw size={14} /> Reactivate
+            </Button>
+          ) : showRenew ? (
             <Button type="button" variant="secondary" onClick={() => onRenew?.(client)} className="!px-3 !py-1.5 text-xs border-red-500/20 hover:border-red-400">
               <RefreshCw size={14} /> Renew
             </Button>
           ) : (
             <Button type="button" variant="secondary" onClick={() => onDelete?.(client)} className="!px-3 !py-1.5 text-xs text-red-400 border-red-500/20 hover:border-red-400 hover:text-red-300">
-              <Trash2 size={14} /> Delete
+              <Trash2 size={14} /> Deactivate
             </Button>
           )}
         </div>
