@@ -19,7 +19,9 @@ const clientSchema = new mongoose.Schema({
   membership: {
     planId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan' },
     planName: { type: String },
-    durationMonths: { type: Number },
+    planDurationMonths: { type: Number },
+    customMonths: { type: Number },
+    durationMonths: { type: Number }, // Keeping for backward compatibility
     startDate: { type: Date },
     endDate: { type: Date },
     daysLeft: { type: Number },
@@ -32,6 +34,8 @@ const clientSchema = new mongoose.Schema({
   },
   paymentHistory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Payment' }],
   avatar: { type: String },
+  isActive: { type: Boolean, default: true },
+  deactivatedAt: { type: Date, default: null }
 }, { timestamps: true });
 
 clientSchema.index({ gymId: 1, clientId: 1 }, { unique: true, sparse: true });

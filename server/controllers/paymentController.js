@@ -45,9 +45,10 @@ exports.recordPayment = async (req, res, next) => {
     const Plan = require('../models/Plan');
     const planDetails = await Plan.findById(planId);
     if(planDetails) {
-       client.membership.planName = planDetails.planName;
+       client.membership.planName = planDetails.name;
        client.membership.planId = planId;
-       client.membership.durationMonths = planDetails.durationMonths;
+       client.membership.planDurationMonths = planDetails.durationMonths;
+       client.membership.durationMonths = planDetails.durationMonths; // backward compat
 
        const membershipWindow = buildMembershipWindow({
          startDate: new Date(),

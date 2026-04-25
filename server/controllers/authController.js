@@ -138,7 +138,7 @@ exports.registerClient = async (req, res, next) => {
   try {
     const {
       gymId, name, dob, gender, address, email, mobileNo, emergencyContact, medicalCondition, password,
-      planId, startDate
+      planId, startDate, planType, customMonths
     } = req.body;
 
     const gymExists = await Gym.findOne({ gymId });
@@ -147,8 +147,17 @@ exports.registerClient = async (req, res, next) => {
     const clientExists = await Client.findOne({ gymId, 'personalInfo.email': email });
     if (clientExists) return res.status(400).json({ success: false, message: 'Client with this email already registered in this gym' });
 
-    const plan = await Plan.findOne({ _id: planId, gymId, isActive: true });
-    if (!plan) return res.status(400).json({ success: false, message: 'Selected plan not found' });
+    let planName = planType;
+    let planDurationMonths = 1;
+
+    if (planType === 'Custom') {
+      planDurationMonths = customMonths;
+    } else {
+      const plan = await Plan.findOne({ _id: planId, gymId, isActive: true });
+      if (!plan) return res.status(400).json({ success: false, message: 'Selected plan not found' });
+      planName = plan.name;
+      planDurationMonths = plan.durationMonths;
+    }
 
     const client = await Client.create({
       gymId,
@@ -156,8 +165,11 @@ exports.registerClient = async (req, res, next) => {
       personalInfo: { name, dob, gender, address, email, mobileNo, emergencyContact, medicalCondition },
       password,
       membership: {
-        planId,
-        planName: plan.planName,
+        planId: planType === 'Custom' ? null : planId,
+        planName,
+        planDurationMonths,
+        durationMonths: planDurationMonths, // backward compat
+        customMonths: planType === 'Custom' ? customMonths : undefined,
         startDate,
         status: 'pending',
         requestApproved: false

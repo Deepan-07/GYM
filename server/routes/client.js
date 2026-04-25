@@ -10,10 +10,13 @@ router.route('/')
   .get(protect, authorize('owner', 'superadmin'), clientController.getClients)
   .post(protect, authorize('owner'), clientController.addClient);
 
+router.get('/inactive', protect, authorize('owner', 'superadmin'), clientController.getInactiveClients);
+
 router.route('/:id')
   .get(protect, authorize('owner', 'superadmin'), clientController.getClientById)
   .delete(protect, authorize('owner'), clientController.deleteClient);
 
 router.put('/:id/approve', protect, authorize('owner'), clientController.approveClient);
+router.put('/:id/reactivate', protect, authorize('owner'), clientController.reactivateClient);
 
 module.exports = router;

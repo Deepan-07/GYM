@@ -12,7 +12,7 @@ const PlanDetailModal = ({ plan, onClose }) => {
       <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="flex justify-between items-start p-6 border-b border-gray-800">
           <div>
-            <h2 className="text-2xl font-bold text-white">{plan.planName}</h2>
+            <h2 className="text-2xl font-bold text-white">{plan.name}</h2>
             <p className="text-primary text-sm mt-1">{plan.durationMonths} month{plan.durationMonths !== 1 ? 's' : ''} plan</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors mt-1 ml-4">
@@ -69,7 +69,7 @@ const PlanCard = ({ plan, onEdit, onDelete, onViewDetails }) => (
       {plan.durationMonths}M Plan
     </span>
 
-    <h3 className="text-xl font-bold text-white mb-1">{plan.planName}</h3>
+    <h3 className="text-xl font-bold text-white mb-1">{plan.name}</h3>
     <p className="text-primary text-3xl font-black mb-6">
       ₹{plan.price?.toLocaleString('en-IN')}
       <span className="text-sm text-gray-400 font-normal"> / {plan.durationMonths} mo</span>
@@ -87,8 +87,10 @@ const PlanCard = ({ plan, onEdit, onDelete, onViewDetails }) => (
 
 // ─── Create / Edit Modal ────────────────────────────────────────────────────
 const PlanFormModal = ({ editingPlan, onClose, onSuccess }) => {
+  const [isCustom, setIsCustom] = useState(editingPlan?.isCustom ?? false);
+  const [standardType, setStandardType] = useState('');
   const [formData, setFormData] = useState({
-    planName: editingPlan?.planName || '',
+    name: editingPlan?.name || '',
     durationMonths: editingPlan?.durationMonths || '',
     price: editingPlan?.price || '',
     description: editingPlan?.description || ''
@@ -97,20 +99,53 @@ const PlanFormModal = ({ editingPlan, onClose, onSuccess }) => {
 
   const handleChange = e => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
+  useEffect(() => {
+    if (editingPlan && !editingPlan.isCustom) {
+      setStandardType(editingPlan.name);
+    }
+  }, [editingPlan]);
+
+  const handleCategoryChange = (category) => {
+    const custom = category === 'Custom';
+    setIsCustom(custom);
+    setStandardType('');
+    if (!custom) {
+      setFormData(prev => ({ ...prev, name: '', durationMonths: '' }));
+    }
+  };
+
+  const handleStandardSelect = (e) => {
+    const type = e.target.value;
+    setStandardType(type);
+    let name = '';
+    let duration = '';
+
+    switch (type) {
+      case 'Monthly': name = 'Monthly'; duration = 1; break;
+      case 'Quarterly': name = 'Quarterly'; duration = 3; break;
+      case 'Half-Yearly': name = 'Half-Yearly'; duration = 6; break;
+      case 'Yearly': name = 'Yearly'; duration = 12; break;
+      default: break;
+    }
+
+    setFormData(prev => ({ ...prev, name, durationMonths: duration }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
+      const payload = { ...formData, isCustom };
       if (editingPlan) {
-        await api.put(`/plan/${editingPlan._id}`, formData);
+        await api.put(`/plan/${editingPlan._id}`, payload);
         toast.success('Plan updated');
       } else {
-        await api.post('/plan', formData);
+        await api.post('/plan', payload);
         toast.success('Plan created');
       }
       onSuccess();
-    } catch {
-      toast.error(editingPlan ? 'Failed to update plan' : 'Failed to create plan');
+    } catch (err) {
+      toast.error(err.response?.data?.message || (editingPlan ? 'Failed to update plan' : 'Failed to create plan'));
     } finally {
       setSaving(false);
     }
@@ -124,30 +159,99 @@ const PlanFormModal = ({ editingPlan, onClose, onSuccess }) => {
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors"><X size={20} /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          
+          {/* Plan Category */}
           <div>
-            <label className="text-xs text-gray-400 mb-1 block uppercase tracking-wider">Plan Name *</label>
-            <input name="planName" value={formData.planName} onChange={handleChange} required className="input-field" placeholder="e.g. Monthly Pro" />
+            <label className="text-xs text-gray-400 mb-2 block uppercase tracking-wider">Plan Category *</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleCategoryChange('Standard')}
+                className={`py-2 px-4 rounded-lg border text-sm font-medium transition-all ${!isCustom ? 'bg-primary border-primary text-black' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'}`}
+              >
+                Standard
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCategoryChange('Custom')}
+                className={`py-2 px-4 rounded-lg border text-sm font-medium transition-all ${isCustom ? 'bg-primary border-primary text-black' : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600'}`}
+              >
+                Custom
+              </button>
+            </div>
           </div>
+
+          {!isCustom ? (
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block uppercase tracking-wider">Select Standard Plan *</label>
+              <select 
+                value={standardType} 
+                onChange={handleStandardSelect} 
+                required={!isCustom}
+                className="input-field appearance-none cursor-pointer"
+              >
+                <option value="">-- Choose Plan --</option>
+                <option value="Monthly">Monthly (1 Month)</option>
+                <option value="Quarterly">Quarterly (3 Months)</option>
+                <option value="Half-Yearly">Half-Yearly (6 Months)</option>
+                <option value="Yearly">Yearly (12 Months)</option>
+              </select>
+            </div>
+          ) : (
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block uppercase tracking-wider">Plan Name *</label>
+              <input 
+                name="name" 
+                value={formData.name} 
+                onChange={handleChange} 
+                required 
+                className="input-field" 
+                placeholder="e.g. Special Offer" 
+              />
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-400 mb-1 block uppercase tracking-wider">Duration (Months) *</label>
-              <input name="durationMonths" value={formData.durationMonths} type="number" min="1" onChange={handleChange} required className="input-field" placeholder="1" />
+              <input 
+                name="durationMonths" 
+                value={formData.durationMonths} 
+                type="number" 
+                min="1" 
+                onChange={handleChange} 
+                required 
+                readOnly={!isCustom}
+                className={`input-field ${!isCustom ? 'opacity-50 cursor-not-allowed bg-gray-800' : ''}`} 
+                placeholder="1" 
+              />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block uppercase tracking-wider">Price (₹) *</label>
-              <input name="price" value={formData.price} type="number" min="0" onChange={handleChange} required className="input-field" placeholder="1500" />
+              <input 
+                name="price" 
+                value={formData.price} 
+                type="number" 
+                min="0" 
+                onChange={handleChange} 
+                required 
+                className="input-field" 
+                placeholder="1500" 
+              />
             </div>
           </div>
+
           <div>
             <label className="text-xs text-gray-400 mb-1 block uppercase tracking-wider">Description (Optional)</label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
-              className="input-field h-28 resize-none"
+              className="input-field h-24 resize-none"
               placeholder="Features included in this plan..."
             />
           </div>
+
           <div className="flex gap-3 justify-end pt-2">
             <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
             <Button type="submit" isLoading={saving}>{editingPlan ? 'Update Plan' : 'Create Plan'}</Button>

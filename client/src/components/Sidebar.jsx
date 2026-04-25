@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, ClipboardList, AlertTriangle, User, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, ClipboardList, AlertTriangle, User, LogOut, UserMinus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 const Sidebar = () => {
@@ -15,6 +15,7 @@ const Sidebar = () => {
   const navLinks = [
     { name: 'Dashboard', path: '/owner', icon: <LayoutDashboard size={20} /> },
     { name: 'Clients', path: '/owner/clients', icon: <Users size={20} /> },
+    { name: 'Inactive Clients', path: '/owner/inactive-clients', icon: <UserMinus size={20} /> },
     { name: 'Plans', path: '/owner/plans', icon: <ClipboardList size={20} /> },
     { name: 'Payments', path: '/owner/payments', icon: <CreditCard size={20} /> },
     { name: 'Overdue', path: '/owner/redtag', icon: <AlertTriangle size={20} /> },

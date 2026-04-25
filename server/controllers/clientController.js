@@ -11,7 +11,7 @@ exports.getClients = async (req, res, next) => {
     const gymIdStr = req.userRole === 'owner' ? req.user.gymId : req.query.gymId;
 
     const { status, planName, plan } = req.query;
-    let query = { gymId: gymIdStr };
+    let query = { gymId: gymIdStr, isActive: true };
 
     if (status && status !== 'All') {
       query['membership.status'] = status.toLowerCase().replace(/_/g, ' ').replace(/ /g, '_');
@@ -99,15 +99,26 @@ exports.addClient = async (req, res, next) => {
     const clientExists = await Client.findOne({ gymId: gymIdStr, 'personalInfo.email': personalInfo.email });
     if (clientExists) return res.status(400).json({ success: false, message: 'Client email exists in this gym.' });
 
-    const plan = await Plan.findOne({ _id: membership?.planId, gymId: gymIdStr, isActive: true });
-    if (!plan) {
-      return res.status(400).json({ success: false, message: 'Selected plan not found' });
+    let planName = membership?.planType;
+    let planDurationMonths = 1;
+    let planId = membership?.planId;
+
+    if (membership?.planType === 'Custom') {
+      planDurationMonths = membership.customMonths;
+      planId = null;
+    } else {
+      const plan = await Plan.findOne({ _id: membership?.planId, gymId: gymIdStr, isActive: true });
+      if (!plan) {
+        return res.status(400).json({ success: false, message: 'Selected plan not found' });
+      }
+      planName = plan.name;
+      planDurationMonths = plan.durationMonths;
     }
 
     const clientId = await generateClientId(gymIdStr);
     const membershipWindow = buildMembershipWindow({
       startDate: membership?.startDate || Date.now(),
-      durationMonths: plan.durationMonths
+      durationMonths: planDurationMonths
     });
 
     const client = await Client.create({
@@ -118,9 +129,11 @@ exports.addClient = async (req, res, next) => {
       password,
       avatar: personalInfo.name.charAt(0).toUpperCase(),
       membership: {
-        planId: plan._id,
-        planName: plan.planName,
-        durationMonths: plan.durationMonths,
+        planId: planId,
+        planName,
+        planDurationMonths,
+        durationMonths: planDurationMonths, // backward compat
+        customMonths: membership?.planType === 'Custom' ? membership.customMonths : undefined,
         startDate: membershipWindow.startDate,
         endDate: membershipWindow.endDate,
         daysLeft: membershipWindow.daysLeft,
@@ -148,13 +161,60 @@ exports.getClientById = async (req, res, next) => {
   }
 };
 
-// @desc    Delete Client
+// @desc    Deactivate Client (formerly Delete)
 // @route   DELETE /api/client/:id
 // @access  Private (Owner)
 exports.deleteClient = async (req, res, next) => {
   try {
-    await Client.findByIdAndDelete(req.params.id);
+    const client = await Client.findById(req.params.id);
+    if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
+    client.isActive = false;
+    client.deactivatedAt = new Date();
+    await client.save();
     res.status(200).json({ success: true, data: {} });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get inactive clients for gym
+// @route   GET /api/client/inactive
+// @access  Private (Owner, Admin)
+exports.getInactiveClients = async (req, res, next) => {
+  try {
+    const gymIdStr = req.userRole === 'owner' ? req.user.gymId : req.query.gymId;
+
+    const { status, planName, plan } = req.query;
+    let query = { gymId: gymIdStr, isActive: false };
+
+    if (status && status !== 'All') {
+      query['membership.status'] = status.toLowerCase().replace(/_/g, ' ').replace(/ /g, '_');
+    }
+
+    const selectedPlan = planName || plan;
+    if (selectedPlan && selectedPlan !== 'All') {
+      query['membership.planName'] = selectedPlan;
+    }
+
+    const clients = await Client.find(query).sort({ deactivatedAt: -1 });
+    res.status(200).json({ success: true, count: clients.length, data: clients });
+  } catch (err) {
+    console.error("GET INACTIVE CLIENTS ERROR:", err);
+    res.status(500).json({ success: false, message: err.message, stack: err.stack });
+  }
+};
+
+// @desc    Reactivate Client
+// @route   PUT /api/client/:id/reactivate
+// @access  Private (Owner)
+exports.reactivateClient = async (req, res, next) => {
+  try {
+    const client = await Client.findById(req.params.id);
+    if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
+    client.isActive = true;
+    client.deactivatedAt = null;
+    await client.save();
+    res.status(200).json({ success: true, data: client });
   } catch (err) {
     next(err);
   }
@@ -169,11 +229,22 @@ exports.approveClient = async (req, res, next) => {
     if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
     if (client.gymId !== req.user.gymId) return res.status(403).json({ success: false, message: 'Unauthorized' });
 
-    const plan = await Plan.findOne({ _id: client.membership.planId, gymId: client.gymId, isActive: true });
-    if (!plan) return res.status(400).json({ success: false, message: 'Plan not found' });
+    let planName = client.membership.planName;
+    let planDurationMonths = client.membership.planDurationMonths || 1;
+
+    if (client.membership.planId) {
+      const plan = await Plan.findOne({ _id: client.membership.planId, gymId: client.gymId, isActive: true });
+      if (plan) {
+        planName = plan.name;
+        planDurationMonths = plan.durationMonths;
+      }
+    } else if (client.membership.customMonths) {
+      planDurationMonths = client.membership.customMonths;
+    }
+
     const membershipWindow = buildMembershipWindow({
       startDate: client.membership.startDate || Date.now(),
-      durationMonths: plan.durationMonths
+      durationMonths: planDurationMonths
     });
 
     if (!client.clientId) {
@@ -186,8 +257,9 @@ exports.approveClient = async (req, res, next) => {
     client.membership.startDate = membershipWindow.startDate;
     client.membership.endDate = membershipWindow.endDate;
     client.membership.daysLeft = membershipWindow.daysLeft;
-    client.membership.planName = plan.planName;
-    client.membership.durationMonths = plan.durationMonths;
+    client.membership.planName = planName;
+    client.membership.planDurationMonths = planDurationMonths;
+    client.membership.durationMonths = planDurationMonths; // backward compat
 
     await client.save();
     res.status(200).json({ success: true, data: client });

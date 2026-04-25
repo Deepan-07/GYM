@@ -18,7 +18,7 @@ const LoginPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         // Mobile validation if loginId looks like a phone number (numeric)
         const loginId = formData.loginId || '';
         if (/^\d+$/.test(loginId)) {
@@ -31,15 +31,15 @@ const LoginPage = () => {
         try {
             const res = await api.post('/auth/login', { loginId, password: formData.password });
             const { token, role, data } = res.data;
-            
+
             // Reconstruct logic based on provided role by the unified endpoint
             const roleForApp = role === 'superadmin' ? 'superadmin' : role;
             login(token, roleForApp, data);
-            
+
             if (role === 'owner') navigate('/owner');
             else if (role === 'client') navigate('/client');
             else navigate('/admin');
-            
+
             toast.success("Welcome Back!");
         } catch (error) {
             toast.error(error.response?.data?.message || "Invalid credentials");
@@ -52,10 +52,10 @@ const LoginPage = () => {
         <div className="min-h-screen flex items-center justify-center bg-dark py-12 px-4 sm:px-6 lg:px-8 bg-[url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat bg-blend-overlay bg-black/80">
             <div className="max-w-md w-full space-y-8 backdrop-blur-md bg-dark/60 p-10 rounded-2xl border border-gray-800 shadow-2xl">
                 <div>
-                    <h2 className="mt-2 text-center text-4xl font-extrabold text-white tracking-tight flex items-center justify-center gap-3">
-                        <LogIn className="text-primary" size={36} /> Welcome Back
+                    <h2 className="mt-2 mr-2 text-center text-4xl font-extrabold text-white tracking-tight flex items-center justify-center gap-3">
+                        <LogIn className="text-primary" size={36} />Welcome
                     </h2>
-                    <p className="mt-3 text-center text-sm text-gray-400">Log in to your portal</p>
+                    <p className="mt-3 ml-8 text-center text-sm text-gray-400">Log in to your portal</p>
                 </div>
 
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
