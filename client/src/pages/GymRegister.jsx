@@ -6,6 +6,7 @@ import Button from '../components/Button';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import { useAuth } from '../hooks/useAuth';
 
 const phoneError = 'Enter a valid 10-digit Indian mobile number';
 const phoneRegex = /^[6-9]\d{9}$/;
@@ -116,6 +117,7 @@ const GymRegister = () => {
   const [loading, setLoading] = useState(false);
   const [logoName, setLogoName] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const {
     register,
@@ -256,8 +258,7 @@ const GymRegister = () => {
       });
       const { gymId, token } = res.data.data;
 
-      localStorage.setItem('token', token);
-      localStorage.setItem('role', 'owner');
+      login(token, 'owner');
 
       toast.success('Registration successful');
       navigate('/registration-success', { state: { gymId } });

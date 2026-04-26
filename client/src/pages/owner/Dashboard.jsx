@@ -9,16 +9,21 @@ import ClientProfileHeader from '../../components/ClientProfileHeader';
 
 const StatCard = ({ title, value, icon, color }) => (
   <div className={`card relative overflow-hidden group`}>
-     <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-10 group-hover:scale-150 transition-transform duration-500 ${color}`}></div>
-     <div className="flex justify-between items-start">
+     {/* Decorative background shape */}
+     <div className={`absolute -right-4 -top-4 w-32 h-32 rounded-full opacity-[0.03] group-hover:opacity-10 group-hover:scale-150 transition-all duration-700 ease-out ${color}`}></div>
+     
+     <div className="flex justify-between items-start relative z-10">
         <div>
-           <p className="text-gray-400 text-sm font-medium mb-1">{title}</p>
-           <h3 className="text-3xl font-bold text-white">{value}</h3>
+           <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1 opacity-80 group-hover:opacity-100 transition-opacity">{title}</p>
+           <h3 className="text-3xl font-black text-white group-hover:text-primary transition-colors duration-300">{value}</h3>
         </div>
-        <div className={`p-3 rounded-lg ${color} bg-opacity-20 backdrop-blur-sm`}>
+        <div className={`p-3 rounded-xl ${color} bg-opacity-10 backdrop-blur-md border border-white/5 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}>
            {icon}
         </div>
      </div>
+     
+     {/* Bottom accent line */}
+     <div className={`absolute bottom-0 left-0 h-1 w-0 group-hover:w-full transition-all duration-500 ease-in-out ${color}`}></div>
   </div>
 );
 
@@ -93,7 +98,6 @@ const Dashboard = () => {
                   <div className="card">
                      <div className="flex justify-between items-center mb-6">
                         <h3 className="text-lg font-bold text-white flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-warning"></div> Expiring Soon</h3>
-                        <span onClick={() => navigate('/owner/clients?status=expiring_soon')} className="text-primary text-sm font-medium hover:underline cursor-pointer">View All</span>
                      </div>
                      {stats?.expiringSoonList?.length === 0 ? (
                          <div className="py-8 text-center text-gray-500 bg-gray-800/20 rounded-lg border border-gray-800 dashed">No clients expiring soon</div>
@@ -108,6 +112,15 @@ const Dashboard = () => {
                                      <ClientProfileHeader client={client} compact />
                                  </div>
                              ))}
+
+                             {stats?.stats?.expiringSoon > 3 && (
+                               <button 
+                                 onClick={() => navigate('/owner/clients?status=expiring_soon')}
+                                 className="w-full mt-2 py-2 text-primary text-sm font-medium hover:bg-primary/10 rounded-lg border border-primary/20 transition-all"
+                                >
+                                 View More
+                               </button>
+                             )}
                          </div>
                      )}
                   </div>
@@ -116,7 +129,6 @@ const Dashboard = () => {
                   <div className="card">
                      <div className="flex justify-between items-center mb-6">
                         <h3 className="text-lg font-bold text-white flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-alert"></div> Overdue</h3>
-                        <span onClick={() => navigate('/owner/redtag')} className="text-alert text-sm font-medium hover:underline cursor-pointer">View All</span>
                      </div>
                      {stats?.redTagList?.length === 0 ? (
                          <div className="py-8 text-center text-gray-500 bg-gray-800/20 rounded-lg border border-gray-800 dashed">No overdue clients</div>
@@ -131,6 +143,15 @@ const Dashboard = () => {
                                      <ClientProfileHeader client={client} compact />
                                  </div>
                              ))}
+
+                             {stats?.stats?.redTagClients > 3 && (
+                               <button 
+                                 onClick={() => navigate('/owner/redtag')}
+                                 className="w-full mt-2 py-2 text-alert text-sm font-medium hover:bg-alert/10 rounded-lg border border-alert/20 transition-all"
+                               >
+                                 View More
+                               </button>
+                             )}
                          </div>
                      )}
                   </div>

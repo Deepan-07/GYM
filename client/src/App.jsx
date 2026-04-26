@@ -36,10 +36,15 @@ import AdminClients from './pages/admin/AdminClients';
 
 // Protected Route Wrapper
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role');
+  const { user, role, loading } = useAuth();
   
-  if (!token || token === 'undefined' || !allowedRoles.includes(role)) return <Navigate to="/login" replace />;
+  if (loading) return (
+    <div className="flex h-screen items-center justify-center bg-dark">
+      <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+
+  if (!user || !allowedRoles.includes(role)) return <Navigate to="/login" replace />;
   
   return children;
 };
