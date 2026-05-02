@@ -1,0 +1,35 @@
+const mongoose = require('mongoose');
+
+const expenseSchema = new mongoose.Schema({
+  gymId: {
+    type: String,
+    required: true,
+    index: true
+  },
+  title: {
+    type: String,
+    required: [true, 'Please add a title'],
+    trim: true
+  },
+  amount: {
+    type: Number,
+    required: [true, 'Please add an amount']
+  },
+  category: {
+    type: String,
+    required: [true, 'Please select a category'],
+    enum: ['Rent', 'Salary', 'Utilities', 'Equipment', 'Maintenance', 'Other']
+  },
+  date: {
+    type: Date,
+    default: Date.now
+  },
+  note: {
+    type: String,
+    trim: true
+  }
+}, {
+  timestamps: true
+});
+
+module.exports = mongoose.model('Expense', expenseSchema);

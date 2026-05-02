@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 // Sidebar removed (rendered via OwnerLayout)
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
-import { Users, UserCheck, AlertCircle, AlertTriangle, List, X, UserPlus } from 'lucide-react';
+import { Users, UserCheck, AlertCircle, AlertTriangle, List, X, UserPlus, ArrowUpRight, ArrowDownRight, CircleDollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ClientForm from '../../components/ClientForm';
 import ClientProfileHeader from '../../components/ClientProfileHeader';
+import RevenueExpenseChart from '../../components/RevenueExpenseChart';
 
 const StatCard = ({ title, value, icon, color }) => (
   <div className={`card relative overflow-hidden group`}>
@@ -82,16 +83,31 @@ const Dashboard = () => {
                    </div>
                </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <StatCard title="Total Revenue" value={`₹${stats?.stats?.totalRevenue?.toLocaleString() || 0}`} icon={<ArrowUpRight size={24} className="text-emerald-400" />} color="bg-emerald-500 text-emerald-500" />
+                    <StatCard title="Total Expenses" value={`₹${stats?.stats?.totalExpenses?.toLocaleString() || 0}`} icon={<ArrowDownRight size={24} className="text-rose-400" />} color="bg-rose-500 text-rose-500" />
+                    <StatCard title="Net Profit" value={`₹${stats?.stats?.netProfit?.toLocaleString() || 0}`} icon={<CircleDollarSign size={24} className="text-cyan-400" />} color="bg-cyan-500 text-cyan-500" />
+                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
-                   <StatCard title="Total Clients" value={stats?.stats?.totalClients} icon={<Users size={24} className="text-primary" />} color="bg-primary text-primary" />
-                   <StatCard title="Active" value={stats?.stats?.activeClients} icon={<UserCheck size={24} className="text-accent" />} color="bg-accent text-accent" />
-                   <div onClick={() => navigate('/owner/requests')} className="cursor-pointer">
-                       <StatCard title="Pending Requests" value={stats?.pendingList?.length || 0} icon={<UserPlus size={24} className="text-yellow-500" />} color="bg-yellow-500 text-yellow-500" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
+                    <StatCard title="Total Clients" value={stats?.stats?.totalClients} icon={<Users size={24} className="text-primary" />} color="bg-primary text-primary" />
+                    <StatCard title="Active" value={stats?.stats?.activeClients} icon={<UserCheck size={24} className="text-accent" />} color="bg-accent text-accent" />
+                    <div onClick={() => navigate('/owner/requests')} className="cursor-pointer">
+                        <StatCard title="Pending Requests" value={stats?.pendingList?.length || 0} icon={<UserPlus size={24} className="text-yellow-500" />} color="bg-yellow-500 text-yellow-500" />
+                    </div>
+                    <StatCard title="Expiring Soon" value={stats?.stats?.expiringSoon} icon={<AlertCircle size={24} className="text-warning" />} color="bg-warning text-warning" />
+                    <StatCard title="Payment Overdue" value={stats?.stats?.overdueClients} icon={<AlertTriangle size={24} className="text-alert" />} color="bg-alert text-alert" />
+                </div>
+
+                {/* Revenue vs Expenses Chart */}
+                <div className="card mb-10 bg-gray-900/40 border-gray-800 shadow-2xl backdrop-blur-sm">
+                   <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                         <div className="w-2 h-2 rounded-full bg-primary"></div> Financial Overview (Last 6 Months)
+                      </h3>
                    </div>
-                   <StatCard title="Expiring Soon" value={stats?.stats?.expiringSoon} icon={<AlertCircle size={24} className="text-warning" />} color="bg-warning text-warning" />
-                   <StatCard title="Payment Overdue" value={stats?.stats?.overdueClients} icon={<AlertTriangle size={24} className="text-alert" />} color="bg-alert text-alert" />
-               </div>
+                   <RevenueExpenseChart data={stats?.chartData || []} />
+                </div>
 
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Expiring Soon */}

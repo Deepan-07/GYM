@@ -1,0 +1,78 @@
+const Expense = require('../models/Expense');
+
+// @desc    Get all expenses
+// @route   GET /api/expenses
+// @access  Private (Owner)
+exports.getExpenses = async (req, res, next) => {
+  try {
+    const gymIdStr = req.user.gymId;
+    const expenses = await Expense.find({ gymId: gymIdStr }).sort({ date: -1 });
+    res.status(200).json({ success: true, count: expenses.length, data: expenses });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Create new expense
+// @route   POST /api/expenses
+// @access  Private (Owner)
+exports.createExpense = async (req, res, next) => {
+  try {
+    req.body.gymId = req.user.gymId;
+    const expense = await Expense.create(req.body);
+    res.status(201).json({ success: true, data: expense });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Update expense
+// @route   PUT /api/expenses/:id
+// @access  Private (Owner)
+exports.updateExpense = async (req, res, next) => {
+  try {
+    let expense = await Expense.findById(req.params.id);
+
+    if (!expense) {
+      return res.status(404).json({ success: false, message: 'Expense not found' });
+    }
+
+    // Make sure user owns expense
+    if (expense.gymId !== req.user.gymId) {
+      return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
+    expense = await Expense.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true
+    });
+
+    res.status(200).json({ success: true, data: expense });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Delete expense
+// @route   DELETE /api/expenses/:id
+// @access  Private (Owner)
+exports.deleteExpense = async (req, res, next) => {
+  try {
+    const expense = await Expense.findById(req.params.id);
+
+    if (!expense) {
+      return res.status(404).json({ success: false, message: 'Expense not found' });
+    }
+
+    // Make sure user owns expense
+    if (expense.gymId !== req.user.gymId) {
+      return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
+    await expense.deleteOne();
+
+    res.status(200).json({ success: true, data: {} });
+  } catch (err) {
+    next(err);
+  }
+};

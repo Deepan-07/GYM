@@ -26,6 +26,7 @@ import OwnerProfile from './pages/owner/Profile';
 import OwnerRequests from './pages/owner/ClientRequests';
 import ClientDetail from './pages/owner/ClientDetail';
 import OwnerExpired from './pages/owner/Expired';
+import OwnerExpenses from './pages/owner/Expenses';
 
 // Client
 import ClientDashboard from './pages/client/ClientDashboard';
@@ -72,7 +73,8 @@ const App = () => {
               <Route path="transactions" element={<OwnerTransactions />} />
               <Route path="dues" element={<OwnerDues />} />
               <Route path="overdue" element={<OwnerOverdue />} />
-              <Route path="expired" element={<OwnerExpired />} />
+               <Route path="expired" element={<OwnerExpired />} />
+              <Route path="expenses" element={<OwnerExpenses />} />
               <Route path="profile" element={<OwnerProfile />} />
               <Route path="requests" element={<OwnerRequests />} />
               <Route path="clients/:id" element={<ClientDetail />} />

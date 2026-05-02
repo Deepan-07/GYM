@@ -20,6 +20,7 @@ const Sidebar = () => {
     { name: 'Transactions', path: '/owner/transactions', icon: <CreditCard size={20} /> },
     { name: 'Dues', path: '/owner/dues', icon: <CreditCard size={20} /> },
     { name: 'Expired', path: '/owner/expired', icon: <Clock size={20} /> },
+    { name: 'Expenses', path: '/owner/expenses', icon: <CreditCard size={20} /> },
     { name: 'Requests', path: '/owner/requests', icon: <UserPlus size={20} /> },
     { name: 'Profile', path: '/owner/profile', icon: <User size={20} /> },
   ];
