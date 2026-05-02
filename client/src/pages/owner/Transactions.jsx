@@ -43,7 +43,10 @@ const Transactions = () => {
                 api.get('/client'),
                 api.get('/plan')
             ]);
-            setPayments(paymentsRes.data.data.filter(p => (p.paidAmount || p.amount) > 0));
+            setPayments(paymentsRes.data.data.filter(p => {
+                const paid = p.paidAmount !== undefined ? p.paidAmount : p.amount;
+                return paid > 0;
+            }));
             setClients(clientsRes.data.data);
             setPlans(plansRes.data.data);
         } catch(e) {
