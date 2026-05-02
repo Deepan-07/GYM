@@ -61,6 +61,7 @@ app.use('/api/plan', require('./routes/plan'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/overdue', require('./routes/overdue'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/expenses', require('./routes/expense'));
 
 // Error Handler Middleware
 app.use(errorHandler);

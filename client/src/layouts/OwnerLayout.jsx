@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Users, Tag, Receipt, CircleDollarSign, AlertCircle, User, UserPlus, UserMinus, Clock } from 'lucide-react';
+import { LayoutDashboard, Users, Tag, Receipt, CircleDollarSign, AlertCircle, User, UserPlus, UserMinus, Clock, CreditCard } from 'lucide-react';
 
 export default function OwnerLayout() {
   const { user, logout } = useAuth();
@@ -19,6 +19,7 @@ export default function OwnerLayout() {
     { to: '/owner/transactions', label: 'Transactions', icon: Receipt },
     { to: '/owner/dues',      label: 'Dues',       icon: CircleDollarSign },
     { to: '/owner/expired',   label: 'Expired',    icon: Clock },
+    { to: '/owner/expenses',  label: 'Expenses',   icon: CreditCard },
     { to: '/owner/requests',  label: 'Requests',   icon: UserPlus },
     { to: '/owner/profile',   label: 'Profile',    icon: User },
   ];

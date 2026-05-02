@@ -2,6 +2,8 @@ const Gym = require('../models/Gym');
 const Owner = require('../models/Owner');
 const Client = require('../models/Client');
 const Plan = require('../models/Plan');
+const Payment = require('../models/Payment');
+const Expense = require('../models/Expense');
 
 // @desc    Get Gym Profile
 // @route   GET /api/gym/profile
@@ -141,10 +143,50 @@ exports.getDashboardStats = async (req, res, next) => {
 
     const pendingList = await Client.find({ gymId: gymIdStr, 'membership.requestApproved': false, isActive: true });
 
+    // Financial calculations
+    const payments = await Payment.find({ gymId: gymIdStr });
+    const totalRevenue = payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+
+    const expenses = await Expense.find({ gymId: gymIdStr });
+    const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    const netProfit = totalRevenue - totalExpenses;
+
+    // Monthly data for chart (Last 6 months)
+    const chartData = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const monthName = d.toLocaleString('default', { month: 'short' });
+        const monthNum = d.getMonth();
+        const yearNum = d.getFullYear();
+
+        const monthlyRevenue = payments
+            .filter(p => {
+                const pDate = new Date(p.paymentDate || p.createdAt);
+                return pDate.getMonth() === monthNum && pDate.getFullYear() === yearNum;
+            })
+            .reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+
+        const monthlyExpenses = expenses
+            .filter(e => {
+                const eDate = new Date(e.date || e.createdAt);
+                return eDate.getMonth() === monthNum && eDate.getFullYear() === yearNum;
+            })
+            .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+        chartData.push({
+            month: monthName,
+            revenue: monthlyRevenue,
+            expenses: monthlyExpenses
+        });
+    }
+
     res.status(200).json({
       success: true,
       data: {
-        stats: { totalClients, activeClients, expiringSoon, overdueClients, totalPlans },
+        stats: { totalClients, activeClients, expiringSoon, overdueClients, totalPlans, totalRevenue, totalExpenses, netProfit },
+        chartData,
         expiringSoonList,
         overdueList,
         pendingList
