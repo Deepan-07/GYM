@@ -24,6 +24,7 @@ import OwnerRedTag from './pages/owner/RedTag';
 import OwnerProfile from './pages/owner/Profile';
 import OwnerRequests from './pages/owner/ClientRequests';
 import ClientDetail from './pages/owner/ClientDetail';
+import OwnerExpired from './pages/owner/Expired';
 
 // Client
 import ClientDashboard from './pages/client/ClientDashboard';
@@ -69,6 +70,7 @@ const App = () => {
               <Route path="plans" element={<OwnerPlans />} />
               <Route path="payments" element={<OwnerPayments />} />
               <Route path="redtag" element={<OwnerRedTag />} />
+              <Route path="expired" element={<OwnerExpired />} />
               <Route path="profile" element={<OwnerProfile />} />
               <Route path="requests" element={<OwnerRequests />} />
               <Route path="clients/:id" element={<ClientDetail />} />

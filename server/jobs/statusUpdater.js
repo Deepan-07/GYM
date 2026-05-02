@@ -1,27 +1,29 @@
 const cron = require('node-cron');
 const Client = require('../models/Client');
-const { buildMembershipWindow } = require('../utils/membership');
+const Payment = require('../models/Payment');
+const { syncClientStatus } = require('../utils/syncStatus');
 
 // Run every day at 00:05
 cron.schedule('* * * * *', async () => {
   console.log('Running statusUpdater job...');
   try {
-    const clients = await Client.find({ 'membership.requestApproved': true, isActive: true });
+    // 1. Transition past due payments to overdue
+    const pendingPayments = await Payment.find({ 
+      status: { $in: ['pending', 'partial'] },
+      dueDate: { $lt: new Date() }
+    });
 
-    for (let client of clients) {
-      if (!client.membership.startDate || !client.membership.durationMonths) continue;
-
-      const membershipWindow = buildMembershipWindow({
-        startDate: client.membership.startDate,
-        durationMonths: client.membership.durationMonths,
-        today: new Date()
-      });
-
-      client.membership.endDate = membershipWindow.endDate;
-      client.membership.daysLeft = membershipWindow.daysLeft;
-      client.membership.status = membershipWindow.status;
-      await client.save();
+    for (let payment of pendingPayments) {
+      payment.status = 'overdue';
+      await payment.save();
     }
+
+    // 2. Sync client payment statuses
+    const clients = await Client.find({ isActive: true });
+    for (let client of clients) {
+      await syncClientStatus(client._id);
+    }
+
     console.log('statusUpdater job completed.');
   } catch (err) {
     console.error('Error in statusUpdater job:', err);

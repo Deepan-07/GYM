@@ -1,20 +1,28 @@
 import React from 'react';
 import { Phone, Mail, Clock } from 'lucide-react';
+import { getPlanStatus } from '../utils/membership';
 
-const statusConfig = {
-    active: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'Active' },
-    expired: { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', label: 'Expired' },
-    overdue: { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', label: 'Overdue' },
-    pending: { color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/20', label: 'Pending' },
-    upcoming: { color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', label: 'Upcoming' },
-    expiring_soon: { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Expiring Soon' },
+const planStatusConfig = {
+    Active: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'Active' },
+    Expired: { color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/20', label: 'Expired' },
+    Upcoming: { color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', label: 'Upcoming' },
+};
+
+const paymentStatusConfig = {
+    paid: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'Paid' },
+    partial: { color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Partial Paid' },
+    overdue: { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', label: 'Payment Overdue ⚠️' },
 };
 
 const ClientProfileHeader = ({ client, compact = false }) => {
     if (!client) return null;
 
-    const status = client.membership?.status || 'pending';
-    const currentStatus = statusConfig[status] || statusConfig.pending;
+    const currentPlan = client?.memberships?.find(p => getPlanStatus(p) === 'Active') || client.membership;
+    const planStatus = currentPlan?.startDate ? getPlanStatus(currentPlan) : 'Expired';
+    const paymentStatus = client.paymentStatus || 'paid';
+
+    const pStatus = planStatusConfig[planStatus] || planStatusConfig.Expired;
+    const payStatus = paymentStatusConfig[paymentStatus] || paymentStatusConfig.paid;
     const name = client.personalInfo?.name || 'Unknown';
     const avatar = client.avatar;
 
@@ -34,9 +42,16 @@ const ClientProfileHeader = ({ client, compact = false }) => {
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-3 mb-2">
                             <h4 className="font-black text-white text-xl lowercase leading-none tracking-tight group-hover:text-primary transition-colors truncate">{name}</h4>
-                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border bg-opacity-10 shrink-0 ${currentStatus.bg} ${currentStatus.color} ${currentStatus.border}`}>
-                                {currentStatus.label}
-                            </span>
+                            <div className="flex gap-2">
+                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border bg-opacity-10 shrink-0 ${pStatus.bg} ${pStatus.color} ${pStatus.border}`}>
+                                    {pStatus.label}
+                                </span>
+                                {paymentStatus !== 'paid' && (
+                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border bg-opacity-10 shrink-0 ${payStatus.bg} ${payStatus.color} ${payStatus.border}`}>
+                                        {payStatus.label}
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-gray-400">
@@ -79,9 +94,14 @@ const ClientProfileHeader = ({ client, compact = false }) => {
                         <h1 className="text-3xl font-extrabold text-white tracking-tight leading-none truncate">
                             {name}
                         </h1>
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${currentStatus.bg} ${currentStatus.color} ${currentStatus.border}`}>
-                            {currentStatus.label}
-                        </span>
+                        <div className="flex gap-2">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${pStatus.bg} ${pStatus.color} ${pStatus.border}`}>
+                                Plan: {pStatus.label}
+                            </span>
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${payStatus.bg} ${payStatus.color} ${payStatus.border}`}>
+                                Payment: {payStatus.label}
+                            </span>
+                        </div>
                     </div>
                     
                     <div className="flex flex-wrap gap-y-2 gap-x-6">

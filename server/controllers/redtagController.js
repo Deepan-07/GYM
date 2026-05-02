@@ -1,4 +1,5 @@
 const Client = require('../models/Client');
+const { getPlanStatus } = require('../utils/membership');
 
 // @desc    Get Red Tag Clients
 // @route   GET /api/redtag
@@ -6,8 +7,55 @@ const Client = require('../models/Client');
 exports.getRedTagClients = async (req, res, next) => {
   try {
     const gymIdStr = req.user.gymId;
-    const clients = await Client.find({ gymId: gymIdStr, 'membership.status': 'overdue', isActive: true }).sort({ 'membership.endDate': 1 });
+    
+    const clients = await Client.find({ 
+      gymId: gymIdStr, 
+      isActive: true,
+      paymentStatus: 'overdue'
+    }).sort({ 'membership.endDate': 1 });
+    
     res.status(200).json({ success: true, count: clients.length, data: clients });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get Expired Membership Clients
+// @route   GET /api/redtag/expired
+// @access  Private (Owner)
+exports.getExpiredClients = async (req, res, next) => {
+  try {
+    const gymIdStr = req.user.gymId;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const clients = await Client.find({ 
+      gymId: gymIdStr, 
+      isActive: true 
+    });
+
+    const expiredClients = clients.filter(client => {
+      const memberships = client.memberships || (client.membership?.startDate ? [client.membership] : []);
+      if (memberships.length === 0) return false;
+
+      // Check if any plan is currently Active or Upcoming
+      const hasActiveOrUpcoming = memberships.some(m => {
+        const status = getPlanStatus(m, today);
+        return status === 'Active' || status === 'Upcoming';
+      });
+
+      // If they have no active/upcoming plans, and at least one expired plan
+      return !hasActiveOrUpcoming;
+    });
+
+    // Sort by most recently expired
+    expiredClients.sort((a, b) => {
+      const aEnd = a.membership?.endDate ? new Date(a.membership.endDate) : 0;
+      const bEnd = b.membership?.endDate ? new Date(b.membership.endDate) : 0;
+      return bEnd - aEnd;
+    });
+    
+    res.status(200).json({ success: true, count: expiredClients.length, data: expiredClients });
   } catch (err) {
     next(err);
   }

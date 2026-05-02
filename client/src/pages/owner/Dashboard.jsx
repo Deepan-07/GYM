@@ -76,7 +76,7 @@ const Dashboard = () => {
                       <button onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-lg shadow-primary/30 font-medium transition-all">
                         + Add Client
                       </button>
-                      <button className="bg-accent hover:bg-emerald-600 text-white px-5 py-2.5 rounded-lg shadow-lg shadow-accent/30 font-medium transition-all">
+                      <button onClick={() => navigate('/owner/payments', { state: { showPaymentModal: true } })} className="bg-accent hover:bg-emerald-600 text-white px-5 py-2.5 rounded-lg shadow-lg shadow-accent/30 font-medium transition-all">
                         Record Payment
                       </button>
                    </div>
@@ -90,7 +90,7 @@ const Dashboard = () => {
                        <StatCard title="Pending Requests" value={stats?.pendingList?.length || 0} icon={<UserPlus size={24} className="text-yellow-500" />} color="bg-yellow-500 text-yellow-500" />
                    </div>
                    <StatCard title="Expiring Soon" value={stats?.stats?.expiringSoon} icon={<AlertCircle size={24} className="text-warning" />} color="bg-warning text-warning" />
-                   <StatCard title="Overdue" value={stats?.stats?.redTagClients} icon={<AlertTriangle size={24} className="text-alert" />} color="bg-alert text-alert" />
+                   <StatCard title="Payment Overdue" value={stats?.stats?.redTagClients} icon={<AlertTriangle size={24} className="text-alert" />} color="bg-alert text-alert" />
                </div>
 
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -128,10 +128,10 @@ const Dashboard = () => {
                   {/* Overdue List */}
                   <div className="card">
                      <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-alert"></div> Overdue</h3>
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-alert"></div> Payment Overdue</h3>
                      </div>
                      {stats?.redTagList?.length === 0 ? (
-                         <div className="py-8 text-center text-gray-500 bg-gray-800/20 rounded-lg border border-gray-800 dashed">No overdue clients</div>
+                         <div className="py-8 text-center text-gray-500 bg-gray-800/20 rounded-lg border border-gray-800 dashed">No payment overdue clients</div>
                      ) : (
                          <div className="space-y-3">
                              {stats?.redTagList?.slice(0, 3).map(client => (

@@ -1,25 +1,35 @@
 import React from 'react';
 import { Eye, RefreshCw, Trash2 } from 'lucide-react';
 import Button from './Button';
-import { calculateDaysLeft, formatDisplayDate } from '../utils/membership';
+import { calculateDaysLeft, formatDisplayDate, getPlanStatus } from '../utils/membership';
 
-const statusStyles = {
-  active: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
-  upcoming: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
-  expiring_soon: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
-  expired: 'bg-orange-500/10 text-orange-400 border border-orange-500/20',
+const planStatusStyles = {
+  Active: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+  Upcoming: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+  Expired: 'bg-gray-500/10 text-gray-400 border border-gray-700/50',
+};
+
+const paymentStatusStyles = {
+  paid: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+  partial: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
   overdue: 'bg-red-500/10 text-red-400 border border-red-500/20',
-  pending: 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
 };
 
 const ClientCard = ({ client, onView, onDelete, onRenew, onReactivate, showRenew = false, showReactivate = false }) => {
   const name = client?.personalInfo?.name || 'Client';
   const avatarText = client?.avatar || name.charAt(0).toUpperCase();
-  const status = client?.membership?.status || 'pending';
-  const dynamicDaysLeft = calculateDaysLeft(client?.membership?.startDate, client?.membership?.endDate);
-  // If the plan is upcoming, dynamicDaysLeft is a string "Starts in X days"
-  // If it's active but we prefer dynamic over snapshot, use dynamicDaysLeft
-  const daysLeft = dynamicDaysLeft !== null ? dynamicDaysLeft : (client?.membership?.daysLeft ?? '-');
+  
+  // Calculate dynamic status based on dates
+  const currentPlan = client?.memberships?.find(p => {
+    const s = getPlanStatus(p);
+    return s === 'Active';
+  }) || (client?.membership?.startDate ? client.membership : null);
+  
+  const planStatus = currentPlan ? getPlanStatus(currentPlan) : 'Expired';
+  const paymentStatus = client?.paymentStatus || 'paid';
+
+  const dynamicDaysLeft = calculateDaysLeft(currentPlan?.startDate, currentPlan?.endDate);
+  const daysLeft = dynamicDaysLeft !== null ? dynamicDaysLeft : '-';
 
   return (
     <div className="bg-gray-900 border-b border-gray-800 hover:bg-gray-800/50 hover:shadow-sm transition-all duration-200 px-4 py-3">
@@ -45,15 +55,15 @@ const ClientCard = ({ client, onView, onDelete, onRenew, onReactivate, showRenew
         {/* Plan */}
         <div className="flex items-center md:block">
           <span className="w-24 md:hidden text-gray-500 text-xs font-semibold uppercase">Plan: </span>
-          <p className="text-white truncate">{client?.membership?.planName || 'N/A'}</p>
+          <p className="text-white truncate">{currentPlan?.planName || 'No Active Plan'}</p>
         </div>
 
         {/* Duration */}
         <div className="flex md:flex-col items-center md:items-start gap-2 md:gap-0">
           <span className="w-24 md:hidden text-gray-500 text-xs font-semibold uppercase">Duration: </span>
           <div className="flex flex-col">
-            <p className="text-gray-300 text-xs text-nowrap">Start: {formatDisplayDate(client?.membership?.startDate)}</p>
-            <p className="text-gray-300 text-xs text-nowrap">End: {formatDisplayDate(client?.membership?.endDate)}</p>
+            <p className="text-gray-300 text-xs text-nowrap">Start: {formatDisplayDate(currentPlan?.startDate)}</p>
+            <p className="text-gray-300 text-xs text-nowrap">End: {formatDisplayDate(currentPlan?.endDate)}</p>
           </div>
         </div>
 
@@ -66,10 +76,15 @@ const ClientCard = ({ client, onView, onDelete, onRenew, onReactivate, showRenew
         {/* Status */}
         <div className="flex items-center md:block">
           <span className="w-24 md:hidden text-gray-500 text-xs font-semibold uppercase">Status: </span>
-          <div>
-            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase whitespace-nowrap ${statusStyles[status] || statusStyles.pending}`}>
-              {status.replace('_', ' ')}
+          <div className="flex flex-col gap-1">
+            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase whitespace-nowrap text-center ${planStatusStyles[planStatus]}`}>
+              {planStatus}
             </span>
+            {paymentStatus !== 'paid' && (
+              <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase whitespace-nowrap text-center ${paymentStatusStyles[paymentStatus]}`}>
+                {paymentStatus === 'overdue' ? 'Payment Overdue ⚠️' : 'Partial Paid'}
+              </span>
+            )}
           </div>
         </div>
 

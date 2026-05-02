@@ -4,7 +4,7 @@ import api from '../../utils/api';
 import { toast } from 'react-toastify';
 import { ChevronLeft, Phone, Mail, User, CreditCard, Calendar, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import Button from '../../components/Button';
-import { formatDisplayDate } from '../../utils/membership';
+import { formatDisplayDate, calculateDaysLeft, getPlanStatus, getPaymentStatus, getClientPlans } from '../../utils/membership';
 import ClientProfileHeader from '../../components/ClientProfileHeader';
 
 const ClientDetail = () => {
@@ -110,43 +110,145 @@ const ClientDetail = () => {
                             {/* Membership Details */}
                             <div className="card bg-gray-900 border-gray-800">
                                 <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2 border-b border-gray-800 pb-4">
-                                    <Calendar size={20} className="text-accent" /> Membership Details
+                                    <Calendar size={20} className="text-accent" /> Membership Lifecycle
                                 </h3>
-                                <div className="space-y-6">
-                                    <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
-                                        <p className="text-gray-500 uppercase text-[10px] font-bold tracking-wider mb-1">Active Plan</p>
-                                        <p className="text-2xl font-bold text-primary">{client.membership.planName || 'No Active Plan'}</p>
-                                    </div>
+                                <div className="space-y-8">
+                                    {(() => {
+                                        const memberships = client.memberships || (client.membership?.startDate ? [client.membership] : []);
+                                        const { currentPlan, nextPlan, previousPlans, gaps } = getClientPlans(memberships);
+                                        
+                                        const getPaymentBadgeStyle = (status) => {
+                                            switch(status) {
+                                                case 'PAID': return 'bg-green-500 text-white';
+                                                case 'PENDING': return 'bg-yellow-500 text-black';
+                                                case 'OVERDUE': return 'bg-red-500 text-white';
+                                                default: return 'bg-gray-500 text-white';
+                                            }
+                                        };
 
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div>
-                                            <p className="text-gray-500 uppercase text-[10px] font-bold tracking-wider mb-1">Start Date</p>
-                                            <p className="text-white font-semibold flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                                {formatDisplayDate(client.membership.startDate)}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-500 uppercase text-[10px] font-bold tracking-wider mb-1">End Date</p>
-                                            <p className="text-white font-semibold flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
-                                                {formatDisplayDate(client.membership.endDate)}
-                                            </p>
-                                        </div>
-                                    </div>
+                                        return (
+                                            <>
+                                                {/* CURRENT PLAN */}
+                                                <div>
+                                                    <p className="text-gray-500 uppercase text-[10px] font-bold tracking-wider mb-3">Current Plan</p>
+                                                    {currentPlan ? (
+                                                        <div className="p-4 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <div>
+                                                                    <p className="text-xl font-bold text-emerald-400">{currentPlan.planName}</p>
+                                                                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[9px] font-bold uppercase">Active</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${getPaymentBadgeStyle(currentPlan.paymentStatus)}`}>
+                                                                        {currentPlan.paymentStatus}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
 
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div>
-                                            <p className="text-gray-500 uppercase text-[10px] font-bold tracking-wider mb-1">Duration</p>
-                                            <p className="text-white font-medium">{client.membership.durationMonths} Month(s)</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-500 uppercase text-[10px] font-bold tracking-wider mb-1">Days Remaining</p>
-                                            <p className={`text-xl font-bold ${client.membership.daysLeft < 7 ? 'text-alert' : 'text-accent'}`}>
-                                                {client.membership.daysLeft} Days
-                                            </p>
-                                        </div>
-                                    </div>
+                                                            <div className="grid grid-cols-2 gap-4 text-sm mt-4">
+                                                                <div>
+                                                                    <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Starts</p>
+                                                                    <p className="text-white font-medium">{formatDisplayDate(currentPlan.startDate)}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Expires</p>
+                                                                    <p className="text-white font-medium">{formatDisplayDate(currentPlan.endDate)}</p>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Payment Info */}
+                                                            <div className="mt-4 pt-4 border-t border-gray-800 grid grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Paid / Balance</p>
+                                                                    <p className="text-white font-medium">₹{currentPlan.totalPaid || 0} / <span className="text-accent">₹{currentPlan.balance || 0}</span></p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Due Date</p>
+                                                                    <p className="text-white font-medium">{currentPlan.dueDate ? formatDisplayDate(currentPlan.dueDate) : 'No Due Date'}</p>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="mt-4 pt-4 border-t border-emerald-500/10 flex justify-between items-center">
+                                                                <span className="text-gray-400 text-xs">Days Remaining:</span>
+                                                                <span className="text-emerald-400 font-bold">{calculateDaysLeft(currentPlan.startDate, currentPlan.endDate)} Days</span>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="p-6 bg-gray-800/20 rounded-xl border border-gray-800/50 flex flex-col items-center justify-center text-center">
+                                                            <AlertCircle size={32} className="text-gray-600 mb-2 opacity-20" />
+                                                            <p className="text-gray-400 font-bold">No Active Plan</p>
+                                                            <p className="text-gray-600 text-[10px] uppercase tracking-widest mt-1">Renewal Required</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* GAP WARNINGS */}
+                                                {gaps.map((gap, i) => (
+                                                    <div key={i} className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-3">
+                                                        <AlertCircle size={18} className="text-red-400" />
+                                                        <p className="text-xs text-red-400 font-medium">
+                                                            No active plan between {formatDisplayDate(gap.from)} and {formatDisplayDate(gap.to)}
+                                                        </p>
+                                                    </div>
+                                                ))}
+
+                                                {/* NEXT PLAN */}
+                                                {nextPlan && (
+                                                    <div>
+                                                        <p className="text-gray-500 uppercase text-[10px] font-bold tracking-wider mb-3">Next Plan</p>
+                                                        <div className="p-4 bg-blue-500/5 rounded-xl border border-blue-500/10">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <div>
+                                                                    <p className="text-lg font-bold text-blue-400">{nextPlan.planName}</p>
+                                                                    <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[9px] font-bold uppercase">Upcoming</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${getPaymentBadgeStyle(nextPlan.paymentStatus)}`}>
+                                                                        {nextPlan.paymentStatus}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <p className="text-xs text-blue-400/60 font-medium mb-4">Starts automatically on {formatDisplayDate(nextPlan.startDate)}</p>
+                                                            
+                                                            <div className="pt-4 border-t border-gray-800 grid grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Paid / Balance</p>
+                                                                    <p className="text-white font-medium">₹{nextPlan.totalPaid || 0} / <span className="text-accent">₹{nextPlan.balance || 0}</span></p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Due Date</p>
+                                                                    <p className="text-white font-medium">{nextPlan.dueDate ? formatDisplayDate(nextPlan.dueDate) : 'No Due Date'}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* PREVIOUS PLANS */}
+                                                {previousPlans.length > 0 && (
+                                                    <div>
+                                                        <p className="text-gray-500 uppercase text-[10px] font-bold tracking-wider mb-3">Previous Plans</p>
+                                                        <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                                                            {previousPlans.map((plan, i) => (
+                                                                <div key={i} className="flex justify-between items-center p-3 bg-gray-800/30 rounded-lg border border-gray-800/50">
+                                                                    <div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <p className="text-white text-sm font-semibold">{plan.planName}</p>
+                                                                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${getPaymentBadgeStyle(plan.paymentStatus)}`}>
+                                                                                {plan.paymentStatus}
+                                                                            </span>
+                                                                        </div>
+                                                                        <p className="text-[10px] text-gray-500">{formatDisplayDate(plan.startDate)} - {formatDisplayDate(plan.endDate)}</p>
+                                                                    </div>
+                                                                    <span className="text-[10px] text-gray-600 font-bold uppercase">Expired</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>

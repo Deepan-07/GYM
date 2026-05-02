@@ -6,6 +6,7 @@ import api from '../utils/api';
 import { toast } from 'react-toastify';
 import Button from './Button';
 import { useAuth } from '../context/AuthContext';
+import PaymentModal from './PaymentModal';
 
 const phoneError = 'Enter a valid 10-digit Indian mobile number';
 const phoneRegex = /^[6-9]\d{9}$/;
@@ -47,6 +48,8 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
   const [loading, setLoading] = useState(false);
   const [fetchingGym, setFetchingGym] = useState(false);
   const [step, setStep] = useState(1);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingClientData, setPendingClientData] = useState(null);
 
   const isOwner = mode === 'owner';
 
@@ -198,6 +201,24 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
     }
   };
 
+  const handleFinalSubmit = async (paymentData) => {
+    setLoading(true);
+    try {
+      const payload = {
+        ...pendingClientData,
+        payment: paymentData
+      };
+      const res = await api.post('/client', payload);
+      toast.success('Client added with payment successfully');
+      onSuccess?.(res.data.data);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to create client and payment');
+      throw error; // Re-throw to let PaymentModal handle loading state
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleNextStep = async () => {
     const isValid = await trigger(selfStepOneFields);
 
@@ -227,22 +248,28 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
     const isValid = await trigger(ownerRequiredFields);
 
     if (isValid) {
-      setLoading(true);
-      try {
-        // Additional check for owner adding client
-        await api.post('/auth/check-exists', { email: values.email, phone: values.mobileNo });
-        handleSubmit(onSubmit)();
-      } catch (err) {
-        if (err.response?.status === 409) {
-          toast.error(err.response.data.message);
-          if (err.response.data.message.toLowerCase().includes('email')) {
-            setError('email', { type: 'manual', message: 'Email already exists' });
-          } else {
-            setError('mobileNo', { type: 'manual', message: 'Phone number already exists' });
+        const data = watch();
+        const payload = {
+          personalInfo: {
+            name: data.name,
+            dob: data.dob,
+            gender: data.gender,
+            address: data.address,
+            email: data.email,
+            mobileNo: data.mobileNo,
+            emergencyContact: data.emergencyContact,
+            medicalCondition: data.medicalCondition?.trim() || ''
+          },
+          password: data.password,
+          membership: {
+            planId: data.planId,
+            startDate: data.startDate,
+            planType: data.planType
           }
-        }
-        setLoading(false);
-      }
+        };
+        
+        setPendingClientData(payload);
+        setShowPaymentModal(true);
     } else {
       toast.error('Please fix the highlighted errors before submitting.');
     }
@@ -386,7 +413,7 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
           }}
         >
           <option value="">Select a plan</option>
-          {plans.filter(p => !p.isCustom).map((plan) => (
+          {plans.map((plan) => (
             <option key={plan._id} value={plan._id}>
               {plan.name} ({plan.durationMonths} months)
             </option>
@@ -449,6 +476,14 @@ const ClientForm = ({ mode = 'self', onSuccess, onCancel, showCancel = false, on
           </Button>
         )}
       </div>
+
+      <PaymentModal 
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onSave={handleFinalSubmit}
+        clientData={pendingClientData}
+        planData={plans.find(p => p._id === values.planId)}
+      />
     </form>
   );
 };

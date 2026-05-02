@@ -16,6 +16,21 @@ const clientSchema = new mongoose.Schema({
     medicalCondition: { type: String, maxlength: 100 }
   },
   password: { type: String, required: true },
+  memberships: [{
+    planId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan' },
+    planName: { type: String },
+    planDurationMonths: { type: Number },
+    startDate: { type: Date },
+    endDate: { type: Date },
+    finalPrice: { type: Number, default: 0 },
+    totalPaid: { type: Number, default: 0 },
+    dueDate: { type: Date }
+  }],
+  paymentStatus: {
+    type: String,
+    enum: ['paid', 'partial', 'overdue'],
+    default: 'paid'
+  },
   membership: {
     planId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan' },
     planName: { type: String },
@@ -25,11 +40,6 @@ const clientSchema = new mongoose.Schema({
     startDate: { type: Date },
     endDate: { type: Date },
     daysLeft: { type: Number },
-    status: {
-      type: String,
-      enum: ['active', 'expiring_soon', 'expired', 'overdue', 'pending', 'upcoming'],
-      default: 'pending'
-    },
     requestApproved: { type: Boolean, default: false }
   },
   paymentHistory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Payment' }],

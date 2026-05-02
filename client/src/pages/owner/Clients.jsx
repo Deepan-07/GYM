@@ -10,11 +10,9 @@ import ClientCard from '../../components/ClientCard';
 // ─── Status options config ───────────────────────────────────────────────────
 const STATUS_OPTIONS = [
   { value: 'All', label: 'All Status' },
-  { value: 'active', label: 'Active' },
-  { value: 'upcoming', label: 'Upcoming' },
-  { value: 'expiring_soon', label: 'Expiring Soon' },
-  { value: 'expired', label: 'Expired' },
-  { value: 'overdue', label: 'Overdue' },
+  { value: 'Active', label: 'Active', dot: 'bg-emerald-500' },
+  { value: 'Upcoming', label: 'Upcoming', dot: 'bg-blue-500' },
+  { value: 'Expired', label: 'Expired', dot: 'bg-gray-500' },
 ];
 
 // ─── Custom Dropdown (replaces native <select> for Dark-theme compatibility) ──

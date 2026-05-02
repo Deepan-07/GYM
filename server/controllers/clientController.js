@@ -14,7 +14,34 @@ exports.getClients = async (req, res, next) => {
     let query = { gymId: gymIdStr, isActive: true };
 
     if (status && status !== 'All') {
-      query['membership.status'] = status.toLowerCase().replace(/_/g, ' ').replace(/ /g, '_');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (status === 'Active') {
+        query['membership.requestApproved'] = true;
+        query.memberships = { 
+          $elemMatch: { 
+            startDate: { $lte: today }, 
+            endDate: { $gte: today } 
+          } 
+        };
+      } else if (status === 'Upcoming') {
+        query['membership.requestApproved'] = true;
+        query.memberships = { 
+          $elemMatch: { 
+            startDate: { $gt: today } 
+          } 
+        };
+      } else if (status === 'Expired') {
+        query['membership.requestApproved'] = true;
+        query.memberships = { 
+          $elemMatch: { 
+            endDate: { $lt: today } 
+          } 
+        };
+      } else if (status === 'pending') {
+        query['membership.requestApproved'] = false;
+      }
     }
 
     const selectedPlan = planName || plan;
@@ -86,14 +113,14 @@ exports.addClient = async (req, res, next) => {
   try {
     const gymIdStr = req.user.gymId;
     const gymNameStr = req.user.gymName;
-    const { personalInfo, password, membership } = req.body;
+    const { personalInfo, password, membership, payment } = req.body;
 
     if (!personalInfo?.email) {
       return res.status(400).json({ success: false, message: 'Email is required' });
     }
 
-    if (!password) {
-      return res.status(400).json({ success: false, message: 'Password is required' });
+    if (!payment) {
+      return res.status(400).json({ success: false, message: 'Payment information is mandatory' });
     }
 
     const clientExists = await Client.findOne({ gymId: gymIdStr, 'personalInfo.email': personalInfo.email });
@@ -102,10 +129,12 @@ exports.addClient = async (req, res, next) => {
     let planName = membership?.planType;
     let planDurationMonths = 1;
     let planId = membership?.planId;
+    let planPrice = 0;
 
     if (membership?.planType === 'Custom') {
       planDurationMonths = membership.customMonths;
       planId = null;
+      planPrice = payment.amount || 0;
     } else {
       const plan = await Plan.findOne({ _id: membership?.planId, gymId: gymIdStr, isActive: true });
       if (!plan) {
@@ -113,6 +142,7 @@ exports.addClient = async (req, res, next) => {
       }
       planName = plan.name;
       planDurationMonths = plan.durationMonths;
+      planPrice = plan.price;
     }
 
     const clientId = await generateClientId(gymIdStr);
@@ -121,6 +151,7 @@ exports.addClient = async (req, res, next) => {
       durationMonths: planDurationMonths
     });
 
+    // Create Client
     const client = await Client.create({
       clientId,
       gymId: gymIdStr,
@@ -128,6 +159,17 @@ exports.addClient = async (req, res, next) => {
       personalInfo,
       password,
       avatar: personalInfo.name.charAt(0).toUpperCase(),
+      paymentStatus: payment.paidAmount >= planPrice ? 'paid' : 'overdue',
+      memberships: [{
+        planId: planId,
+        planName,
+        planDurationMonths,
+        startDate: membershipWindow.startDate,
+        endDate: membershipWindow.endDate,
+        finalPrice: planPrice,
+        totalPaid: payment.paidAmount,
+        dueDate: payment.dueDate
+      }],
       membership: {
         planId: planId,
         planName,
@@ -137,10 +179,37 @@ exports.addClient = async (req, res, next) => {
         startDate: membershipWindow.startDate,
         endDate: membershipWindow.endDate,
         daysLeft: membershipWindow.daysLeft,
-        status: membershipWindow.status,
         requestApproved: true
       }
     });
+
+    // Create Payment Record (MANDATORY)
+    const Payment = require('../models/Payment');
+    const Gym = require('../models/Gym');
+    const { generatePaymentId } = require('../utils/generateId');
+    
+    const gym = await Gym.findOne({ gymId: gymIdStr });
+    const paymentId = await generatePaymentId(gymIdStr, gym?.billingInfo?.billingIdPrefix || 'BILL');
+
+    const paymentRecord = await Payment.create({
+      paymentId,
+      gymId: gymIdStr,
+      clientId: client._id.toString(),
+      clientName: personalInfo.name,
+      planId: planId,
+      planName: planName,
+      amount: planPrice,
+      paidAmount: payment.paidAmount,
+      status: payment.paidAmount >= planPrice ? 'paid' : (payment.paidAmount > 0 ? 'partial' : 'overdue'),
+      paymentMethod: payment.paymentMethod,
+      dueDate: payment.dueDate,
+      startDate: membershipWindow.startDate,
+      isPlanActivated: true
+    });
+
+    // Update client with payment reference
+    client.paymentHistory = [paymentRecord._id];
+    await client.save();
 
     res.status(201).json({ success: true, data: client });
   } catch (err) {
@@ -153,8 +222,46 @@ exports.addClient = async (req, res, next) => {
 // @access  Private (Owner)
 exports.getClientById = async (req, res, next) => {
   try {
-    const client = await Client.findById(req.params.id).populate('paymentHistory');
-    if (!client) return res.status(404).json({ success: false, message: 'Client not found' });
+    const Payment = require('../models/Payment');
+    const clientDoc = await Client.findById(req.params.id).populate('paymentHistory');
+    if (!clientDoc) return res.status(404).json({ success: false, message: 'Client not found' });
+
+    const client = clientDoc.toObject();
+
+    // Fetch all payments for this client to aggregate for memberships
+    const allPayments = await Payment.find({ clientId: client._id.toString() });
+
+    if (client.memberships && Array.isArray(client.memberships)) {
+      client.memberships = client.memberships.map(m => {
+        // Find all payments belonging to this membership period
+        // We match by planId and startDate as these define the membership window
+        const relatedPayments = allPayments.filter(p => 
+          p.planId?.toString() === m.planId?.toString() &&
+          new Date(p.startDate).getTime() === new Date(m.startDate).getTime()
+        );
+
+        const totalPaid = relatedPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+        
+        // Fallback for existing records where finalPrice might be 0
+        const effectiveFinalPrice = m.finalPrice || (relatedPayments.length > 0 ? relatedPayments[0].amount : 0);
+        
+        const balance = effectiveFinalPrice - totalPaid;
+        
+        // Use the latest due date from the related payments if available
+        const latestPaymentWithDueDate = [...relatedPayments]
+          .filter(p => p.dueDate)
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+
+        return {
+          ...m,
+          finalPrice: effectiveFinalPrice,
+          totalPaid,
+          balance: balance > 0 ? balance : 0,
+          dueDate: latestPaymentWithDueDate ? latestPaymentWithDueDate.dueDate : m.dueDate
+        };
+      });
+    }
+
     res.status(200).json({ success: true, data: client });
   } catch (err) {
     next(err);
@@ -188,7 +295,29 @@ exports.getInactiveClients = async (req, res, next) => {
     let query = { gymId: gymIdStr, isActive: false };
 
     if (status && status !== 'All') {
-      query['membership.status'] = status.toLowerCase().replace(/_/g, ' ').replace(/ /g, '_');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (status === 'Active') {
+        query.memberships = { 
+          $elemMatch: { 
+            startDate: { $lte: today }, 
+            endDate: { $gte: today } 
+          } 
+        };
+      } else if (status === 'Upcoming') {
+        query.memberships = { 
+          $elemMatch: { 
+            startDate: { $gt: today } 
+          } 
+        };
+      } else if (status === 'Expired') {
+        query.memberships = { 
+          $elemMatch: { 
+            endDate: { $lt: today } 
+          } 
+        };
+      }
     }
 
     const selectedPlan = planName || plan;
@@ -251,9 +380,19 @@ exports.approveClient = async (req, res, next) => {
       client.clientId = await generateClientId(client.gymId);
     }
 
+    const newPlan = {
+      planId: client.membership.planId,
+      planName,
+      planDurationMonths,
+      startDate: membershipWindow.startDate,
+      endDate: membershipWindow.endDate
+    };
+
+    if (!client.memberships) client.memberships = [];
+    client.memberships.push(newPlan);
+
     client.gymName = req.user.gymName;
     client.membership.requestApproved = true;
-    client.membership.status = membershipWindow.status;
     client.membership.startDate = membershipWindow.startDate;
     client.membership.endDate = membershipWindow.endDate;
     client.membership.daysLeft = membershipWindow.daysLeft;
