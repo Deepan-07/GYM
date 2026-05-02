@@ -7,4 +7,7 @@ router.route('/')
   .post(protect, authorize('owner'), paymentController.recordPayment)
   .get(protect, authorize('owner', 'superadmin'), paymentController.getPayments);
 
+router.route('/:id')
+  .put(protect, authorize('owner'), paymentController.updatePayment);
+
 module.exports = router;

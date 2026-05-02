@@ -88,15 +88,57 @@ exports.getDashboardStats = async (req, res, next) => {
   try {
     const gymIdStr = req.user.gymId;
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const totalClients = await Client.countDocuments({ gymId: gymIdStr, isActive: true });
-    const activeClients = await Client.countDocuments({ gymId: gymIdStr, 'membership.status': 'active', isActive: true });
-    const expiringSoon = await Client.countDocuments({ gymId: gymIdStr, 'membership.status': 'expiring_soon', isActive: true });
-    const overdueClients = await Client.countDocuments({ gymId: gymIdStr, 'membership.status': 'overdue', isActive: true });
+    
+    const activeClients = await Client.countDocuments({ 
+      gymId: gymIdStr, 
+      isActive: true,
+      memberships: { 
+        $elemMatch: { 
+          startDate: { $lte: today }, 
+          endDate: { $gte: today } 
+        } 
+      }
+    });
+
+    const expiringSoon = await Client.countDocuments({ 
+      gymId: gymIdStr, 
+      isActive: true,
+      memberships: { 
+        $elemMatch: { 
+          endDate: { $gte: today, $lte: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000) } 
+        } 
+      }
+    });
+
+    const overdueClients = await Client.countDocuments({ 
+      gymId: gymIdStr, 
+      isActive: true,
+      paymentStatus: 'overdue'
+    });
+
     const totalPlans = await Plan.countDocuments({ gymId: gymIdStr, isActive: true });
 
     // Fetch lists
-    const expiringSoonList = await Client.find({ gymId: gymIdStr, 'membership.status': 'expiring_soon', isActive: true }).limit(3);
-    const overdueList = await Client.find({ gymId: gymIdStr, 'membership.status': 'overdue', isActive: true }).limit(3);
+    const expiringSoonList = await Client.find({ 
+      gymId: gymIdStr, 
+      isActive: true,
+      memberships: { 
+        $elemMatch: { 
+          endDate: { $gte: today, $lte: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000) } 
+        } 
+      }
+    }).limit(3);
+
+    const overdueList = await Client.find({ 
+      gymId: gymIdStr, 
+      isActive: true,
+      paymentStatus: 'overdue'
+    }).limit(3);
+
     const pendingList = await Client.find({ gymId: gymIdStr, 'membership.requestApproved': false, isActive: true });
 
     res.status(200).json({
