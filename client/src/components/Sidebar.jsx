@@ -17,8 +17,8 @@ const Sidebar = () => {
     { name: 'Clients', path: '/owner/clients', icon: <Users size={20} /> },
     { name: 'Inactive Clients', path: '/owner/inactive-clients', icon: <UserMinus size={20} /> },
     { name: 'Plans', path: '/owner/plans', icon: <ClipboardList size={20} /> },
-    { name: 'Payments', path: '/owner/payments', icon: <CreditCard size={20} /> },
-    { name: 'Overdue', path: '/owner/redtag', icon: <AlertCircle size={20} /> },
+    { name: 'Transactions', path: '/owner/transactions', icon: <CreditCard size={20} /> },
+    { name: 'Dues', path: '/owner/dues', icon: <CreditCard size={20} /> },
     { name: 'Expired', path: '/owner/expired', icon: <Clock size={20} /> },
     { name: 'Requests', path: '/owner/requests', icon: <UserPlus size={20} /> },
     { name: 'Profile', path: '/owner/profile', icon: <User size={20} /> },
@@ -39,16 +39,15 @@ const Sidebar = () => {
       <div className="flex-1 space-y-2">
         {navLinks.map((link) => (
           <NavLink
-             key={link.name}
-             to={link.path}
-             end={link.path === '/owner'}
-             className={({ isActive }) => 
-                `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
-                   isActive 
-                   ? 'bg-primary/10 text-primary font-semibold' 
-                   : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                }`
-             }
+            key={link.name}
+            to={link.path}
+            end={link.path === '/owner'}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
+                ? 'bg-primary/10 text-primary font-semibold'
+                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+              }`
+            }
           >
             <span className="group-hover:scale-110 transition-transform duration-200">{link.icon}</span>
             {link.name}
@@ -57,13 +56,13 @@ const Sidebar = () => {
       </div>
 
       <div className="pb-6 pt-4 border-t border-gray-800 mt-4">
-         <button 
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-alert transition-all duration-200 group"
-         >
-            <LogOut size={20} className="group-hover:-translate-x-1 transition-transform duration-200" />
-            <span className="font-medium">Logout</span>
-         </button>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-red-500/10 hover:text-alert transition-all duration-200 group"
+        >
+          <LogOut size={20} className="group-hover:-translate-x-1 transition-transform duration-200" />
+          <span className="font-medium">Logout</span>
+        </button>
       </div>
     </div>
   );

@@ -32,8 +32,10 @@ const PaymentModal = ({
             setSelectedPlan(planData);
             setFormData(prev => ({
                 ...prev,
-                amount: planData.price,
-                paidAmount: planData.price
+                amount: initialData.amount !== undefined ? initialData.amount : planData.price,
+                paidAmount: initialData.paidAmount !== undefined ? initialData.paidAmount : planData.price,
+                dueDate: initialData.dueDate || prev.dueDate,
+                startDate: initialData.startDate || prev.startDate
             }));
         }
     }, [clientData, planData]);

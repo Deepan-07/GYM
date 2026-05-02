@@ -59,7 +59,7 @@ app.use('/api/gym', require('./routes/gym'));
 app.use('/api/client', require('./routes/client'));
 app.use('/api/plan', require('./routes/plan'));
 app.use('/api/payment', require('./routes/payment'));
-app.use('/api/redtag', require('./routes/redtag'));
+app.use('/api/overdue', require('./routes/overdue'));
 app.use('/api/admin', require('./routes/admin'));
 
 // Error Handler Middleware

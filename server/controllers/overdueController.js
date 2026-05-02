@@ -1,10 +1,10 @@
 const Client = require('../models/Client');
 const { getPlanStatus } = require('../utils/membership');
 
-// @desc    Get Red Tag Clients
-// @route   GET /api/redtag
+// @desc    Get Overdue Clients
+// @route   GET /api/overdue
 // @access  Private (Owner)
-exports.getRedTagClients = async (req, res, next) => {
+exports.getOverdueClients = async (req, res, next) => {
   try {
     const gymIdStr = req.user.gymId;
     
@@ -21,7 +21,7 @@ exports.getRedTagClients = async (req, res, next) => {
 };
 
 // @desc    Get Expired Membership Clients
-// @route   GET /api/redtag/expired
+// @route   GET /api/overdue/expired
 // @access  Private (Owner)
 exports.getExpiredClients = async (req, res, next) => {
   try {

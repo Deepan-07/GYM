@@ -19,8 +19,9 @@ import OwnerDashboard from './pages/owner/Dashboard';
 import OwnerClients from './pages/owner/Clients';
 import OwnerInactiveClients from './pages/owner/InactiveClients';
 import OwnerPlans from './pages/owner/Plans';
-import OwnerPayments from './pages/owner/Payments';
-import OwnerRedTag from './pages/owner/RedTag';
+import OwnerTransactions from './pages/owner/Transactions';
+import OwnerDues from './pages/owner/Dues';
+import OwnerOverdue from './pages/owner/Overdue';
 import OwnerProfile from './pages/owner/Profile';
 import OwnerRequests from './pages/owner/ClientRequests';
 import ClientDetail from './pages/owner/ClientDetail';
@@ -68,8 +69,9 @@ const App = () => {
               <Route path="clients" element={<OwnerClients />} />
               <Route path="inactive-clients" element={<OwnerInactiveClients />} />
               <Route path="plans" element={<OwnerPlans />} />
-              <Route path="payments" element={<OwnerPayments />} />
-              <Route path="redtag" element={<OwnerRedTag />} />
+              <Route path="transactions" element={<OwnerTransactions />} />
+              <Route path="dues" element={<OwnerDues />} />
+              <Route path="overdue" element={<OwnerOverdue />} />
               <Route path="expired" element={<OwnerExpired />} />
               <Route path="profile" element={<OwnerProfile />} />
               <Route path="requests" element={<OwnerRequests />} />

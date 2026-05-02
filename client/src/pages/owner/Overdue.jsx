@@ -6,14 +6,14 @@ import { toast } from 'react-toastify';
 import { AlertOctagon } from 'lucide-react';
 import ClientCard from '../../components/ClientCard';
 
-const RedTag = () => {
+const Overdue = () => {
     const navigate = useNavigate();
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchRedTagClients = async () => {
+    const fetchOverdueClients = async () => {
         try {
-            const res = await api.get('/redtag');
+            const res = await api.get('/overdue');
             setClients(res.data.data);
         } catch(e) {
             toast.error("Failed to load overdue clients");
@@ -21,10 +21,10 @@ const RedTag = () => {
         setLoading(false);
     };
 
-    useEffect(() => { fetchRedTagClients(); }, []);
+    useEffect(() => { fetchOverdueClients(); }, []);
 
     const handleRenew = (client) => {
-        navigate('/owner/payments', { state: { showPaymentModal: true, client } });
+        navigate('/owner/transactions', { state: { showPaymentModal: true, client } });
     };
 
     const handleView = (client) => {
@@ -79,4 +79,4 @@ const RedTag = () => {
     );
 };
 
-export default RedTag;
+export default Overdue;

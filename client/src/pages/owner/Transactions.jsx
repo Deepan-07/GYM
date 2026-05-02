@@ -7,7 +7,7 @@ import Button from '../../components/Button';
 import { getPlanStatus } from '../../utils/membership';
 import PaymentModal from '../../components/PaymentModal';
 
-const Payments = () => {
+const Transactions = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [payments, setPayments] = useState([]);
@@ -43,7 +43,7 @@ const Payments = () => {
                 api.get('/client'),
                 api.get('/plan')
             ]);
-            setPayments(paymentsRes.data.data);
+            setPayments(paymentsRes.data.data.filter(p => (p.paidAmount || p.amount) > 0));
             setClients(clientsRes.data.data);
             setPlans(plansRes.data.data);
         } catch(e) {
@@ -201,8 +201,8 @@ const Payments = () => {
             <div className="flex-1 overflow-y-auto p-8 pt-10">
                 <div className="flex justify-between items-center mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-white tracking-tight">Payment Ledger</h1>
-                        <p className="text-gray-400 mt-1">History of all transactions.</p>
+                        <h1 className="text-3xl font-bold text-white tracking-tight">Transaction History</h1>
+                        <p className="text-gray-400 mt-1">History of all successful payments.</p>
                     </div>
                     <Button onClick={() => setShowModal(true)} className="flex items-center gap-2">
                         <Plus size={18} /> Record Payment
@@ -354,4 +354,4 @@ const Payments = () => {
     );
 };
 
-export default Payments;
+export default Transactions;
