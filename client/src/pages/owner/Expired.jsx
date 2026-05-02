@@ -12,7 +12,7 @@ const Expired = () => {
 
     const fetchExpiredClients = async () => {
         try {
-            const res = await api.get('/redtag/expired');
+            const res = await api.get('/overdue/expired');
             setClients(res.data.data);
         } catch(e) {
             toast.error("Failed to load expired clients");
@@ -24,7 +24,7 @@ const Expired = () => {
 
     const handleRenew = (client) => {
         // Navigate to payments page with client pre-selected and renewal modal open
-        navigate('/owner/payments', { state: { showPaymentModal: true, client } });
+        navigate('/owner/transactions', { state: { showPaymentModal: true, client } });
     };
 
     const handleView = (client) => {

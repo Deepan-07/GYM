@@ -144,9 +144,9 @@ exports.getDashboardStats = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {
-        stats: { totalClients, activeClients, expiringSoon, redTagClients: overdueClients, totalPlans },
+        stats: { totalClients, activeClients, expiringSoon, overdueClients, totalPlans },
         expiringSoonList,
-        redTagList: overdueList,
+        overdueList,
         pendingList
       }
     });
