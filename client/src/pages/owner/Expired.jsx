@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
-import { Clock, History } from 'lucide-react';
+import { Clock, History, X } from 'lucide-react';
 import ClientCard from '../../components/ClientCard';
+import ClientDetail from './ClientDetail';
 
 const Expired = () => {
     const navigate = useNavigate();
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [viewClientId, setViewClientId] = useState(null);
 
     const fetchExpiredClients = async () => {
         try {
@@ -28,7 +30,7 @@ const Expired = () => {
     };
 
     const handleView = (client) => {
-        navigate(`/owner/clients/${client._id}`);
+        setViewClientId(client._id);
     };
 
     return (
@@ -70,12 +72,30 @@ const Expired = () => {
                                     onView={handleView}
                                     onRenew={handleRenew}
                                     showRenew={true}
+                                    hideStatus={true}
                                 />
                             ))}
                         </div>
                     </div>
                 )}
             </div>
+
+            {/* View Client Modal */}
+            {viewClientId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="relative bg-gray-900 border border-gray-700/50 rounded-xl w-full max-w-4xl shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-gray-800 flex justify-between items-center shrink-0">
+                            <h2 className="text-lg font-bold text-white">Client Details</h2>
+                            <button onClick={() => setViewClientId(null)} className="text-gray-400 hover:text-white transition-colors">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <div className="overflow-y-auto custom-scrollbar flex-1">
+                            <ClientDetail clientId={viewClientId} onClose={() => setViewClientId(null)} />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

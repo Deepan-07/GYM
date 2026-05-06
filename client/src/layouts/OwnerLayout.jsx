@@ -20,6 +20,7 @@ export default function OwnerLayout() {
     { to: '/owner/dues',      label: 'Dues',       icon: CircleDollarSign },
     { to: '/owner/expired',   label: 'Expired',    icon: Clock },
     { to: '/owner/expenses',  label: 'Expenses',   icon: CreditCard },
+    { to: '/owner/payment-ledger', label: 'Payment Ledger', icon: CircleDollarSign },
     { to: '/owner/requests',  label: 'Requests',   icon: UserPlus },
     { to: '/owner/profile',   label: 'Profile',    icon: User },
   ];

@@ -15,7 +15,7 @@ const paymentStatusStyles = {
   overdue: 'bg-red-500/10 text-red-400 border border-red-500/20',
 };
 
-const ClientCard = ({ client, onView, onDelete, onRenew, onReactivate, showRenew = false, showReactivate = false }) => {
+const ClientCard = ({ client, onView, onDelete, onRenew, onReactivate, showRenew = false, showReactivate = false, hideStatus = false }) => {
   const name = client?.personalInfo?.name || 'Client';
   const avatarText = client?.avatar || name.charAt(0).toUpperCase();
   
@@ -74,36 +74,42 @@ const ClientCard = ({ client, onView, onDelete, onRenew, onReactivate, showRenew
         </div>
 
         {/* Status */}
-        <div className="flex items-center md:block">
-          <span className="w-24 md:hidden text-gray-500 text-xs font-semibold uppercase">Status: </span>
-          <div className="flex flex-col gap-1">
-            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase whitespace-nowrap text-center ${planStatusStyles[planStatus]}`}>
-              {planStatus}
-            </span>
-            {paymentStatus !== 'paid' && (
-              <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase whitespace-nowrap text-center ${paymentStatusStyles[paymentStatus]}`}>
-                {paymentStatus === 'overdue' ? 'Payment Overdue ⚠️' : 'Partial Paid'}
+        {!hideStatus && (
+          <div className="flex items-center md:block">
+            <span className="w-24 md:hidden text-gray-500 text-xs font-semibold uppercase">Status: </span>
+            <div className="flex flex-col gap-1">
+              <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase whitespace-nowrap text-center ${planStatusStyles[planStatus]}`}>
+                {planStatus}
               </span>
-            )}
+              {paymentStatus !== 'paid' && (
+                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase whitespace-nowrap text-center ${paymentStatusStyles[paymentStatus]}`}>
+                  {paymentStatus === 'overdue' ? 'Payment Overdue ⚠️' : 'Partial Paid'}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Actions */}
-        <div className="flex gap-2 justify-start md:justify-end shrink-0 mt-2 md:mt-0">
-          <Button type="button" variant="secondary" onClick={() => onView?.(client)} className="!px-3 !py-1.5 text-xs">
+        <div className={`flex gap-2 justify-start md:justify-end shrink-0 mt-2 md:mt-0 ${hideStatus ? 'md:col-span-2' : ''}`}>
+          <Button type="button" variant="secondary" onClick={(e) => { e.stopPropagation(); onView?.(client); }} className="!px-3 !py-1.5 text-xs">
             <Eye size={14} /> View
           </Button>
 
-          {showReactivate ? (
-            <Button type="button" variant="secondary" onClick={() => onReactivate?.(client)} className="!px-3 !py-1.5 text-xs text-emerald-400 border-emerald-500/20 hover:border-emerald-400 hover:text-emerald-300">
+          {showReactivate && onReactivate && (
+            <Button type="button" variant="secondary" onClick={(e) => { e.stopPropagation(); onReactivate?.(client); }} className="!px-3 !py-1.5 text-xs text-emerald-400 border-emerald-500/20 hover:border-emerald-400 hover:text-emerald-300">
               <RefreshCw size={14} /> Reactivate
             </Button>
-          ) : showRenew ? (
-            <Button type="button" variant="secondary" onClick={() => onRenew?.(client)} className="!px-3 !py-1.5 text-xs border-red-500/20 hover:border-red-400">
+          )}
+
+          {showRenew && onRenew && (
+            <Button type="button" variant="secondary" onClick={(e) => { e.stopPropagation(); onRenew?.(client); }} className="!px-3 !py-1.5 text-xs text-blue-400 border-blue-500/20 hover:border-blue-400 hover:text-blue-300">
               <RefreshCw size={14} /> Renew
             </Button>
-          ) : (
-            <Button type="button" variant="secondary" onClick={() => onDelete?.(client)} className="!px-3 !py-1.5 text-xs text-red-400 border-red-500/20 hover:border-red-400 hover:text-red-300">
+          )}
+
+          {onDelete && (
+            <Button type="button" variant="secondary" onClick={(e) => { e.stopPropagation(); onDelete?.(client); }} className="!px-3 !py-1.5 text-xs text-red-400 border-red-500/20 hover:border-red-400 hover:text-red-300">
               <Trash2 size={14} /> Deactivate
             </Button>
           )}

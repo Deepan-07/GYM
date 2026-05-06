@@ -32,16 +32,26 @@ exports.getClients = async (req, res, next) => {
             startDate: { $gt: today } 
           } 
         };
-      } else if (status === 'Expired') {
+      } else if (status === 'Expiring Soon') {
         query['membership.requestApproved'] = true;
         query.memberships = { 
           $elemMatch: { 
-            endDate: { $lt: today } 
+            endDate: { $gte: today, $lte: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000) } 
           } 
         };
+      } else if (status === 'Dues') {
+        query.paymentStatus = { $in: ['overdue', 'partial'] };
+        query.memberships = { $elemMatch: { endDate: { $gte: today } } }; // Must not be expired
       } else if (status === 'pending') {
         query['membership.requestApproved'] = false;
       }
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      query.$or = [
+        { memberships: { $elemMatch: { endDate: { $gte: today } } } },
+        { 'membership.requestApproved': false }
+      ];
     }
 
     const selectedPlan = planName || plan;

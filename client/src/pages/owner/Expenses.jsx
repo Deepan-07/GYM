@@ -13,7 +13,8 @@ import {
     Tag, 
     FileText,
     X,
-    ChevronDown
+    ChevronDown,
+    Eye
 } from 'lucide-react';
 
 const CATEGORIES = ['Rent', 'Salary', 'Utilities', 'Equipment', 'Maintenance', 'Other'];
@@ -35,8 +36,9 @@ const Expenses = () => {
     
     // Modal state
     const [showModal, setShowModal] = useState(false);
-    const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
+    const [modalMode, setModalMode] = useState('add'); // 'add', 'edit', 'view'
     const [currentExpense, setCurrentExpense] = useState(null);
+    const [selectedExpenseId, setSelectedExpenseId] = useState(null);
     const [formData, setFormData] = useState({
         title: '',
         amount: '',
@@ -49,7 +51,8 @@ const Expenses = () => {
         try {
             setLoading(true);
             const res = await api.get('/expenses');
-            setExpenses(res.data.data);
+            const onlyExpenses = res.data.data.filter(e => !e.isReminder);
+            setExpenses(onlyExpenses);
         } catch (error) {
             toast.error("Failed to load expenses");
         } finally {
@@ -63,7 +66,7 @@ const Expenses = () => {
 
     const handleOpenModal = (mode, expense = null) => {
         setModalMode(mode);
-        if (mode === 'edit' && expense) {
+        if ((mode === 'edit' || mode === 'view') && expense) {
             setCurrentExpense(expense);
             setFormData({
                 title: expense.title,
@@ -87,6 +90,14 @@ const Expenses = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (!formData.title || !formData.title.trim()) {
+            return toast.error("Please enter a valid title");
+        }
+        if (!formData.amount || Number(formData.amount) <= 0) {
+            return toast.error("Please enter a valid amount greater than 0");
+        }
+
         try {
             if (modalMode === 'add') {
                 await api.post('/expenses', formData);
@@ -210,7 +221,6 @@ const Expenses = () => {
                                             <td className="p-4">
                                                 <div className="flex flex-col">
                                                     <span className="text-white font-semibold">{exp.title}</span>
-                                                    {exp.note && <span className="text-gray-500 text-xs truncate max-w-[200px]">{exp.note}</span>}
                                                 </div>
                                             </td>
                                             <td className="p-4">
@@ -228,16 +238,23 @@ const Expenses = () => {
                                                 <span className="text-white font-black">₹{exp.amount.toLocaleString()}</span>
                                             </td>
                                             <td className="p-4 text-right">
-                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex items-center justify-end gap-2">
                                                     <button 
-                                                        onClick={() => handleOpenModal('edit', exp)}
+                                                        onClick={(e) => { e.stopPropagation(); handleOpenModal('view', exp); }}
+                                                        className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-lg transition-all"
+                                                        title="View Details"
+                                                    >
+                                                        <Eye size={16} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleOpenModal('edit', exp); }}
                                                         className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-all"
                                                         title="Edit"
                                                     >
                                                         <Edit2 size={16} />
                                                     </button>
                                                     <button 
-                                                        onClick={() => handleDelete(exp._id)}
+                                                        onClick={(e) => { e.stopPropagation(); handleDelete(exp._id); }}
                                                         className="p-2 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all"
                                                         title="Delete"
                                                     >
@@ -265,78 +282,110 @@ const Expenses = () => {
                             <X size={24} />
                         </button>
                         
-                        <h2 className="text-2xl font-bold text-white mb-6">
-                            {modalMode === 'add' ? 'Add New Expense' : 'Edit Expense'}
+                        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                            {modalMode === 'view' ? <Eye className="text-emerald-400" /> : <CircleDollarSign className="text-primary" />}
+                            {modalMode === 'add' ? 'Add Expense' : modalMode === 'edit' ? 'Edit Entry' : 'View Details'}
                         </h2>
                         
-                        <form onSubmit={handleSubmit} className="space-y-5">
-                            <div>
-                                <label className="block text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">Title</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-primary"
-                                    placeholder="e.g., Monthly Rent"
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                />
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">Amount (₹)</label>
-                                    <input 
-                                        type="number" 
-                                        required
-                                        className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-primary"
-                                        placeholder="0.00"
-                                        value={formData.amount}
-                                        onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                                    />
+                        {modalMode === 'view' ? (
+                            <div className="space-y-4">
+                                <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800">
+                                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Title</p>
+                                    <p className="text-white font-medium">{formData.title}</p>
                                 </div>
-                                <div>
-                                    <label className="block text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">Category</label>
-                                    <div className="relative">
-                                        <select 
-                                            className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-primary appearance-none cursor-pointer"
-                                            value={formData.category}
-                                            onChange={(e) => setFormData({...formData, category: e.target.value})}
-                                        >
-                                            {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                        </select>
-                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800">
+                                        <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Amount</p>
+                                        <p className="text-white font-black text-xl">₹{Number(formData.amount).toLocaleString()}</p>
+                                    </div>
+                                    <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800">
+                                        <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Category</p>
+                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border inline-block mt-1 ${CATEGORY_COLORS[formData.category] || CATEGORY_COLORS.Other}`}>
+                                            {formData.category}
+                                        </span>
                                     </div>
                                 </div>
+                                <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800">
+                                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Date</p>
+                                    <p className="text-white">{new Date(formData.date).toLocaleDateString('en-GB')}</p>
+                                </div>
+                                {formData.note && (
+                                    <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800">
+                                        <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Notes</p>
+                                        <p className="text-gray-300 text-sm leading-relaxed">{formData.note}</p>
+                                    </div>
+                                )}
                             </div>
-                            
-                            <div>
-                                <label className="block text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">Date</label>
-                                <input 
-                                    type="date" 
-                                    required
-                                    className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-primary [color-scheme:dark]"
-                                    value={formData.date}
-                                    onChange={(e) => setFormData({...formData, date: e.target.value})}
-                                />
-                            </div>
-                            
-                            <div>
-                                <label className="block text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">Notes (Optional)</label>
-                                <textarea 
-                                    className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-primary h-24 resize-none"
-                                    placeholder="Add any additional details..."
-                                    value={formData.note}
-                                    onChange={(e) => setFormData({...formData, note: e.target.value})}
-                                />
-                            </div>
-                            
-                            <button 
-                                type="submit"
-                                className="w-full bg-primary hover:bg-blue-600 text-white font-bold py-3 rounded-lg shadow-lg shadow-primary/30 transition-all mt-4"
-                            >
-                                {modalMode === 'add' ? 'Create Expense' : 'Save Changes'}
-                            </button>
-                        </form>
+                        ) : (
+                            <form onSubmit={handleSubmit} className="space-y-5">
+                                <div>
+                                    <label className="block text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">Title</label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-primary"
+                                        placeholder="e.g., Monthly Rent"
+                                        value={formData.title}
+                                        onChange={(e) => setFormData({...formData, title: e.target.value})}
+                                    />
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">Amount (₹)</label>
+                                        <input 
+                                            type="number" 
+                                            required
+                                            className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-primary"
+                                            placeholder="0.00"
+                                            value={formData.amount}
+                                            onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">Category</label>
+                                        <div className="relative">
+                                            <select 
+                                                className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-primary appearance-none cursor-pointer"
+                                                value={formData.category}
+                                                onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                            >
+                                                {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                            </select>
+                                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={16} />
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">Date</label>
+                                    <input 
+                                        type="date" 
+                                        required
+                                        className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-primary [color-scheme:dark]"
+                                        value={formData.date}
+                                        onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">Notes (Optional)</label>
+                                    <textarea 
+                                        className="w-full bg-gray-900 border border-gray-800 rounded-lg py-2.5 px-4 text-white focus:outline-none focus:border-primary h-24 resize-none"
+                                        placeholder="Add any additional details..."
+                                        value={formData.note}
+                                        onChange={(e) => setFormData({...formData, note: e.target.value})}
+                                    />
+                                </div>
+                                
+                                <button 
+                                    type="submit"
+                                    className="w-full bg-primary hover:bg-blue-600 text-white font-bold py-3 rounded-lg shadow-lg shadow-primary/30 transition-all mt-4"
+                                >
+                                    {modalMode === 'add' ? 'Create Expense' : 'Save Changes'}
+                                </button>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}

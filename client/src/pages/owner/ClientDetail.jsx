@@ -7,8 +7,9 @@ import Button from '../../components/Button';
 import { formatDisplayDate, calculateDaysLeft, getPlanStatus, getPaymentStatus, getClientPlans } from '../../utils/membership';
 import ClientProfileHeader from '../../components/ClientProfileHeader';
 
-const ClientDetail = () => {
-    const { id } = useParams();
+const ClientDetail = ({ clientId: propClientId, onClose }) => {
+    const { id: paramId } = useParams();
+    const id = propClientId || paramId;
     const navigate = useNavigate();
     const [client, setClient] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -31,7 +32,7 @@ const ClientDetail = () => {
 
     if (loading) {
         return (
-            <div className="flex bg-dark h-screen justify-center items-center">
+            <div className={propClientId ? "flex justify-center items-center h-64" : "flex bg-dark h-screen justify-center items-center"}>
                 <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
             </div>
         );
@@ -40,19 +41,20 @@ const ClientDetail = () => {
     if (!client) return null;
 
     return (
-        <div className="flex flex-col bg-dark h-screen overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-4 md:p-8 pt-8">
+        <div className={propClientId ? "flex flex-col bg-gray-900 overflow-hidden" : "flex flex-col bg-dark h-screen overflow-hidden"}>
+            <div className={propClientId ? "flex-1 overflow-y-auto p-4 md:p-6" : "flex-1 overflow-y-auto p-4 md:p-8 pt-8"}>
                 {/* Header Actions */}
-                <div className="flex justify-between items-center mb-6">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
-                    >
-                        <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-                        <span>Back to List</span>
-                    </button>
-
-                </div>
+                {!propClientId && (
+                    <div className="flex justify-between items-center mb-6">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors group"
+                        >
+                            <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                            <span>Back to List</span>
+                        </button>
+                    </div>
+                )}
 
                 <ClientProfileHeader client={client} />
 

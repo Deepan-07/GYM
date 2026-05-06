@@ -116,12 +116,6 @@ exports.getDashboardStats = async (req, res, next) => {
       }
     });
 
-    const overdueClients = await Client.countDocuments({ 
-      gymId: gymIdStr, 
-      isActive: true,
-      paymentStatus: 'overdue'
-    });
-
     const totalPlans = await Plan.countDocuments({ gymId: gymIdStr, isActive: true });
 
     // Fetch lists
@@ -135,19 +129,34 @@ exports.getDashboardStats = async (req, res, next) => {
       }
     }).limit(3);
 
-    const overdueList = await Client.find({ 
-      gymId: gymIdStr, 
-      isActive: true,
-      paymentStatus: 'overdue'
-    }).limit(3);
+    const clients = await Client.find({ gymId: gymIdStr, isActive: true });
+    
+    const expiredClientsList = clients.filter(client => {
+      const memberships = client.memberships || (client.membership?.startDate ? [client.membership] : []);
+      if (memberships.length === 0) return false;
+      const hasActiveOrUpcoming = memberships.some(m => {
+        const endDate = new Date(m.endDate);
+        return endDate >= today;
+      });
+      return !hasActiveOrUpcoming;
+    });
+    
+    expiredClientsList.sort((a, b) => new Date(b.membership?.endDate || 0) - new Date(a.membership?.endDate || 0));
+
+    const expiredClients = expiredClientsList.length;
+    const expiredList = expiredClientsList.slice(0, 3);
 
     const pendingList = await Client.find({ gymId: gymIdStr, 'membership.requestApproved': false, isActive: true });
+
+    const recentClients = await Client.find({ gymId: gymIdStr, isActive: true })
+      .sort({ createdAt: -1 })
+      .limit(5);
 
     // Financial calculations
     const payments = await Payment.find({ gymId: gymIdStr });
     const totalRevenue = payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
 
-    const expenses = await Expense.find({ gymId: gymIdStr });
+    const expenses = await Expense.find({ gymId: gymIdStr, isReminder: { $ne: true } });
     const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
     const netProfit = totalRevenue - totalExpenses;
@@ -185,11 +194,12 @@ exports.getDashboardStats = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {
-        stats: { totalClients, activeClients, expiringSoon, overdueClients, totalPlans, totalRevenue, totalExpenses, netProfit },
+        stats: { totalClients, activeClients, expiringSoon, expiredClients, totalPlans, totalRevenue, totalExpenses, netProfit },
         chartData,
         expiringSoonList,
-        overdueList,
-        pendingList
+        expiredList,
+        pendingList,
+        recentClients
       }
     });
   } catch (err) {
