@@ -27,6 +27,16 @@ const expenseSchema = new mongoose.Schema({
   note: {
     type: String,
     trim: true
+  },
+  isReminder: {
+    type: Boolean,
+    default: false
+  },
+  dueDate: {
+    type: Date
+  },
+  reminderDate: {
+    type: Date
   }
 }, {
   timestamps: true

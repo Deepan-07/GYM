@@ -6,6 +6,7 @@ import { Search, Filter, Plus, X, ChevronDown, Check } from 'lucide-react';
 import Button from '../../components/Button';
 import ClientForm from '../../components/ClientForm';
 import ClientCard from '../../components/ClientCard';
+import ClientDetail from './ClientDetail';
 
 // ─── Status options config ───────────────────────────────────────────────────
 const STATUS_OPTIONS = [
@@ -113,6 +114,7 @@ const InactiveClients = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [formInstanceKey, setFormInstanceKey] = useState(0);
   const [isFormDirty, setIsFormDirty] = useState(false);
+  const [viewClientId, setViewClientId] = useState(null);
 
   // Fetch plans once (for the plan filter dropdown)
   useEffect(() => {
@@ -294,13 +296,30 @@ const InactiveClients = () => {
                 <ClientCard
                   key={client._id}
                   client={client}
-                  onView={(c) => navigate(`/owner/clients/${c._id}`)}
+                  onView={(c) => setViewClientId(c._id)}
                   showReactivate={true}
                   onReactivate={selected => handleReactivate(selected._id)}
                 />
               ))}
             </div>
           </div>
+        )}
+
+        {/* View Client Modal */}
+        {viewClientId && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                <div className="relative bg-gray-900 border border-gray-700/50 rounded-xl w-full max-w-4xl shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-gray-800 flex justify-between items-center shrink-0">
+                        <h2 className="text-lg font-bold text-white">Client Details</h2>
+                        <button onClick={() => setViewClientId(null)} className="text-gray-400 hover:text-white transition-colors">
+                            <X size={24} />
+                        </button>
+                    </div>
+                    <div className="overflow-y-auto custom-scrollbar flex-1">
+                        <ClientDetail clientId={viewClientId} onClose={() => setViewClientId(null)} />
+                    </div>
+                </div>
+            </div>
         )}
 
       </div>

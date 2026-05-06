@@ -10,9 +10,10 @@ import ClientCard from '../../components/ClientCard';
 // ─── Status options config ───────────────────────────────────────────────────
 const STATUS_OPTIONS = [
   { value: 'All', label: 'All Status' },
-  { value: 'Active', label: 'Active', dot: 'bg-emerald-500' },
   { value: 'Upcoming', label: 'Upcoming', dot: 'bg-blue-500' },
-  { value: 'Expired', label: 'Expired', dot: 'bg-gray-500' },
+  { value: 'Active', label: 'Active', dot: 'bg-emerald-500' },
+  { value: 'Expiring Soon', label: 'Expiring Soon', dot: 'bg-warning' },
+  { value: 'Dues', label: 'Dues', dot: 'bg-red-500' },
 ];
 
 // ─── Custom Dropdown (replaces native <select> for Dark-theme compatibility) ──
@@ -97,6 +98,7 @@ const Clients = () => {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [duesClient, setDuesClient] = useState(null);
 
   // Get status from URL if present
   const queryParams = new URLSearchParams(location.search);
@@ -223,7 +225,7 @@ const Clients = () => {
         )}
 
         {/* ── Search + Filter Bar ── */}
-        <div className="card mb-3 flex flex-col gap-3 bg-gray-900 border-gray-800">
+        <div className="card mb-3 flex flex-col gap-3 bg-gray-900 border-gray-800 relative z-20 overflow-visible">
           <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
 
             {/* Search */}
@@ -320,13 +322,56 @@ const Clients = () => {
             </div>
             <div className="flex flex-col">
               {filteredClients.map(client => (
-                <ClientCard
-                  key={client._id}
-                  client={client}
-                  onView={(c) => navigate(`/owner/clients/${c._id}`)}
-                  onDelete={selected => handleDelete(selected._id)}
-                />
+                <div key={client._id} onClick={() => { if (filterStatus === 'Dues') setDuesClient(client); }} className={filterStatus === 'Dues' ? 'cursor-pointer' : ''}>
+                  <ClientCard
+                    client={client}
+                    onView={(c) => navigate(`/owner/clients/${c._id}`)}
+                    onDelete={selected => handleDelete(selected._id)}
+                  />
+                </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Dues Modal ── */}
+        {duesClient && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-sm p-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
+              <button onClick={() => setDuesClient(null)} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+              
+              <div className="flex flex-col items-center mb-6">
+                <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center font-bold text-2xl mb-3">
+                  {duesClient.avatar || duesClient.personalInfo?.name.charAt(0).toUpperCase()}
+                </div>
+                <h3 className="text-xl font-bold text-white text-center">{duesClient.personalInfo?.name}</h3>
+                <p className="text-gray-400 text-sm">{duesClient.clientId || 'Pending ID'}</p>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div className="flex justify-between items-center py-2 border-b border-gray-800">
+                  <span className="text-gray-400 text-sm">Plan</span>
+                  <span className="text-white font-medium">{duesClient.membership?.planName || 'No Plan'}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-800">
+                  <span className="text-gray-400 text-sm">Total Paid</span>
+                  <span className="text-emerald-400 font-medium">₹{duesClient.memberships?.[0]?.totalPaid || 0}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-800">
+                  <span className="text-gray-400 text-sm">Balance</span>
+                  <span className="text-red-400 font-bold">₹{duesClient.memberships?.[0]?.balance || ((duesClient.memberships?.[0]?.finalPrice || 0) - (duesClient.memberships?.[0]?.totalPaid || 0))}</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-gray-400 text-sm">Deadline Date</span>
+                  <span className="text-white font-medium">{duesClient.memberships?.[0]?.dueDate ? new Date(duesClient.memberships[0].dueDate).toLocaleDateString() : 'N/A'}</span>
+                </div>
+              </div>
+
+              <Button onClick={() => { setDuesClient(null); navigate('/owner/transactions', { state: { showPaymentModal: true, client: duesClient } }); }} className="w-full">
+                Collect Payment
+              </Button>
             </div>
           </div>
         )}
