@@ -18,7 +18,13 @@ exports.getExpenses = async (req, res, next) => {
 // @access  Private (Owner)
 exports.createExpense = async (req, res, next) => {
   try {
+    req.body = req.body || {};
     req.body.gymId = req.user.gymId;
+    
+    if (req.file) {
+      req.body.billImage = `/uploads/bills/${req.file.filename}`;
+    }
+
     const expense = await Expense.create(req.body);
     res.status(201).json({ success: true, data: expense });
   } catch (err) {
@@ -40,6 +46,10 @@ exports.updateExpense = async (req, res, next) => {
     // Make sure user owns expense
     if (expense.gymId !== req.user.gymId) {
       return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
+    if (req.file) {
+      req.body.billImage = `/uploads/bills/${req.file.filename}`;
     }
 
     expense = await Expense.findByIdAndUpdate(req.params.id, req.body, {

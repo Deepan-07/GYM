@@ -7,12 +7,15 @@ import Button from '../../components/Button';
 import ClientForm from '../../components/ClientForm';
 import ClientCard from '../../components/ClientCard';
 import ClientDetail from './ClientDetail';
+import PaymentModal from '../../components/PaymentModal';
 
 // ─── Status options config ───────────────────────────────────────────────────
 const STATUS_OPTIONS = [
   { value: 'All', label: 'All Status' },
-  { value: 'Active', label: 'Active', dot: 'bg-emerald-500' },
   { value: 'Upcoming', label: 'Upcoming', dot: 'bg-blue-500' },
+  { value: 'Active', label: 'Active', dot: 'bg-emerald-500' },
+  { value: 'Expiring Soon', label: 'Expiring Soon', dot: 'bg-warning' },
+  { value: 'Dues', label: 'Dues', dot: 'bg-red-500' },
   { value: 'Expired', label: 'Expired', dot: 'bg-gray-500' },
 ];
 
@@ -115,6 +118,11 @@ const InactiveClients = () => {
   const [formInstanceKey, setFormInstanceKey] = useState(0);
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [viewClientId, setViewClientId] = useState(null);
+  const [duesClient, setDuesClient] = useState(null);
+
+  // Payment Renewal Modal states
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedClientForRenewal, setSelectedClientForRenewal] = useState(null);
 
   // Fetch plans once (for the plan filter dropdown)
   useEffect(() => {
@@ -157,14 +165,77 @@ const InactiveClients = () => {
     setIsFormDirty(false);
   };
 
-  const handleReactivate = async (id) => {
-    if (window.confirm('Are you sure you want to reactivate this client?')) {
+  const handleReactivate = async (client) => {
+    // Determine status - use the same logic as ClientCard for consistency
+    const currentPlan = client?.memberships?.find(p => {
+        const t = new Date();
+        t.setHours(0,0,0,0);
+        const s = new Date(p.startDate);
+        s.setHours(0,0,0,0);
+        const e = new Date(p.endDate);
+        e.setHours(0,0,0,0);
+        return t >= s && t <= e;
+    }) || (client?.membership?.startDate ? client.membership : null);
+    
+    let status = 'Expired';
+    if (currentPlan) {
+        const t = new Date();
+        t.setHours(0,0,0,0);
+        const s = new Date(currentPlan.startDate);
+        s.setHours(0,0,0,0);
+        const e = new Date(currentPlan.endDate);
+        e.setHours(0,0,0,0);
+        if (t < s) status = 'Upcoming';
+        else if (t > e) status = 'Expired';
+        else status = 'Active';
+    }
+
+    // CASE 1: Active, Upcoming, Expiring Soon (Expiring Soon is a subset of Active in this check) -> Reactivate directly
+    if (status === 'Active' || status === 'Upcoming') {
+      if (window.confirm(`Are you sure you want to reactivate ${client.personalInfo.name}?`)) {
+        try {
+          await api.put(`/client/${client._id}/reactivate`);
+          toast.success('Client reactivated successfully');
+          fetchClients();
+        } catch {
+          toast.error('Failed to reactivate client');
+        }
+      }
+    } 
+    // CASE 2: Expired -> Open Record Payment for renewal
+    else {
+      setSelectedClientForRenewal(client);
+      setShowPaymentModal(true);
+    }
+  };
+
+  const handleRenewalSave = async (paymentData) => {
+    try {
+      // 1. Save payment
+      await api.post('/payment', paymentData);
+      
+      // 2. Reactivate client
+      await api.put(`/client/${selectedClientForRenewal._id}/reactivate`);
+      
+      toast.success('Membership renewed and client reactivated');
+      setShowPaymentModal(false);
+      setSelectedClientForRenewal(null);
+      fetchClients();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to renew membership');
+      throw error;
+    }
+  };
+
+  const handleDelete = async (client) => {
+    if (window.confirm(`Are you sure you want to PERMANENTLY delete ${client.personalInfo.name}? This action cannot be undone.`)) {
       try {
-        await api.put(`/client/${id}/reactivate`);
-        toast.success('Client reactivated');
+        await api.delete(`/client/${client._id}`);
+        toast.success('Client deleted permanently');
+        setClients(prev => prev.filter(c => c._id !== client._id));
         fetchClients();
-      } catch {
-        toast.error('Failed to reactivate');
+      } catch (error) {
+        toast.error('Failed to delete client');
       }
     }
   };
@@ -196,7 +267,7 @@ const InactiveClients = () => {
         </div>
 
         {/* ── Search + Filter Bar ── */}
-        <div className="card mb-3 flex flex-col gap-3 bg-gray-900 border-gray-800">
+        <div className="card mb-3 flex flex-col gap-3 bg-gray-900 border-gray-800 relative z-20 overflow-visible">
           <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
 
             {/* Search */}
@@ -270,8 +341,24 @@ const InactiveClients = () => {
 
         {/* ── Client list ── */}
         {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="card p-0 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-lg">
+            <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_2fr_1fr_1fr_1fr] gap-2 px-4 py-4 bg-gray-900/80 border-b border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              <div>Client Info</div><div>Mobile No</div><div>Plan</div><div>Duration</div><div>Days Left</div><div>Status</div><div className="text-right">Actions</div>
+            </div>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-4 border-b border-gray-800/50">
+                <div className="w-10 h-10 bg-gray-800 rounded-xl animate-pulse shrink-0"></div>
+                <div className="flex-1 grid grid-cols-[2fr_1fr_1fr_2fr_1fr_1fr_1fr] gap-2 items-center">
+                  <div><div className="h-4 w-24 bg-gray-800 rounded animate-pulse mb-1"></div><div className="h-3 w-16 bg-gray-800 rounded animate-pulse"></div></div>
+                  <div className="h-4 w-20 bg-gray-800 rounded animate-pulse"></div>
+                  <div className="h-4 w-16 bg-gray-800 rounded animate-pulse"></div>
+                  <div className="h-4 w-28 bg-gray-800 rounded animate-pulse"></div>
+                  <div className="h-4 w-10 bg-gray-800 rounded animate-pulse"></div>
+                  <div className="h-5 w-14 bg-gray-800 rounded-full animate-pulse"></div>
+                  <div className="h-7 w-16 bg-gray-800 rounded-lg animate-pulse ml-auto"></div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : filteredClients.length === 0 ? (
           <div className="card bg-gray-900 border-gray-800 text-center py-16 text-gray-400">
@@ -298,7 +385,10 @@ const InactiveClients = () => {
                   client={client}
                   onView={(c) => setViewClientId(c._id)}
                   showReactivate={true}
-                  onReactivate={selected => handleReactivate(selected._id)}
+                  onReactivate={handleReactivate}
+                  onDuesClick={setDuesClient}
+                  onDelete={handleDelete}
+                  deleteLabel="Delete"
                 />
               ))}
             </div>
@@ -320,6 +410,76 @@ const InactiveClients = () => {
                     </div>
                 </div>
             </div>
+        )}
+
+        {/* ── Dues Modal ── */}
+        {duesClient && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-sm p-6 shadow-2xl relative animate-in zoom-in-95 duration-200">
+              <button onClick={() => setDuesClient(null)} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+              
+              <div className="flex flex-col items-center mb-6 pt-2">
+                <div className="w-20 h-20 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center font-black text-3xl mb-4 border-2 border-red-500/20 shadow-inner">
+                  {duesClient.avatar || duesClient.personalInfo?.name.charAt(0).toUpperCase()}
+                </div>
+                <h3 className="text-2xl font-black text-white text-center leading-tight mb-1">{duesClient.personalInfo?.name}</h3>
+                <p className="text-gray-500 font-mono text-sm uppercase tracking-tighter mb-3">{duesClient.clientId || 'ABC-XX'}</p>
+                <div className="flex flex-col items-center gap-1 opacity-80">
+                  <p className="text-gray-400 text-sm font-medium">{duesClient.personalInfo?.mobileNo}</p>
+                  <p className="text-gray-500 text-xs truncate max-w-[200px]">{duesClient.personalInfo?.email}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4 mb-8 bg-gray-800/20 p-4 rounded-xl border border-gray-800/50">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400 font-medium">Plan Name</span>
+                  <span className="text-white font-bold">{duesClient.memberships?.[0]?.planName || duesClient.membership?.planName || 'No Plan'}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400 font-medium">Total Amount</span>
+                  <span className="text-white font-bold">₹{duesClient.memberships?.[0]?.finalPrice || 0}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400 font-medium">Paid Amount</span>
+                  <span className="text-emerald-400 font-bold">₹{duesClient.memberships?.[0]?.totalPaid || 0}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm pt-3 border-t border-gray-800">
+                  <span className="text-gray-400 font-medium">Balance Dues</span>
+                  <span className="text-red-400 font-black text-lg">₹{duesClient.memberships?.[0]?.balance || 0}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400 font-medium">Due Date</span>
+                  <span className="text-white font-bold">{duesClient.memberships?.[0]?.dueDate ? new Date(duesClient.memberships[0].dueDate).toLocaleDateString('en-GB') : 'N/A'}</span>
+                </div>
+              </div>
+
+              <Button 
+                onClick={() => { 
+                    const client = duesClient;
+                    setDuesClient(null); 
+                    setSelectedClientForRenewal(client);
+                    setShowPaymentModal(true);
+                }} 
+                className="w-full !py-4 text-base font-bold shadow-xl shadow-primary/20"
+              >
+                Collect Payment
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Renewal Payment Modal ── */}
+        {showPaymentModal && selectedClientForRenewal && (
+            <PaymentModal
+                isOpen={showPaymentModal}
+                onClose={() => { setShowPaymentModal(false); setSelectedClientForRenewal(null); }}
+                onSave={handleRenewalSave}
+                clientData={selectedClientForRenewal}
+                lockClient={true}
+                plans={plans}
+            />
         )}
 
       </div>

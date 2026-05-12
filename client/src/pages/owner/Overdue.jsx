@@ -24,7 +24,7 @@ const Overdue = () => {
     useEffect(() => { fetchOverdueClients(); }, []);
 
     const handleRenew = (client) => {
-        navigate('/owner/transactions', { state: { showPaymentModal: true, client } });
+        navigate('/owner/clients-payment', { state: { showPaymentModal: true, client } });
     };
 
     const handleView = (client) => {

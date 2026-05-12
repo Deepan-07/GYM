@@ -37,6 +37,9 @@ const expenseSchema = new mongoose.Schema({
   },
   reminderDate: {
     type: Date
+  },
+  billImage: {
+    type: String
   }
 }, {
   timestamps: true

@@ -13,7 +13,9 @@ import {
     Edit2,
     Trash2,
     FileText,
-    Eye
+    Eye,
+    Image as ImageIcon,
+    ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -44,8 +46,10 @@ const PaymentLedger = () => {
         amount: '',
         category: 'Other',
         date: new Date().toISOString().split('T')[0],
-        note: ''
+        note: '',
+        billImage: null
     });
+    const [billFile, setBillFile] = useState(null);
 
     const fetchData = async () => {
         try {
@@ -119,7 +123,8 @@ const PaymentLedger = () => {
                 amount: expense.amount,
                 category: expense.category || 'Other',
                 date: expense.date ? new Date(expense.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-                note: expense.note || ''
+                note: expense.note || '',
+                billImage: expense.billImage
             });
         } else {
             setCurrentExpense(null);
@@ -128,8 +133,10 @@ const PaymentLedger = () => {
                 amount: '',
                 category: 'Other',
                 date: new Date().toISOString().split('T')[0],
-                note: ''
+                note: '',
+                billImage: null
             });
+            setBillFile(null);
         }
         setShowModal(true);
     };
@@ -144,12 +151,23 @@ const PaymentLedger = () => {
             return toast.error("Please enter a valid amount greater than 0");
         }
 
+        const data = new FormData();
+        data.append('title', formData.title);
+        data.append('amount', formData.amount);
+        data.append('category', formData.category);
+        data.append('date', formData.date);
+        data.append('note', formData.note);
+        if (billFile) {
+            data.append('billImage', billFile);
+        }
+
         try {
             if (modalMode === 'add') {
-                await api.post('/expenses', formData);
+                await api.post('/expenses', data);
                 toast.success("Expense added successfully");
             } else if (modalMode === 'edit') {
-                await api.put(`/expenses/${currentExpense._id}`, formData);
+                // For edit, we might want to support updating the image too
+                await api.put(`/expenses/${currentExpense._id}`, data);
                 toast.success("Updated successfully");
             }
             setShowModal(false);
@@ -178,20 +196,56 @@ const PaymentLedger = () => {
                         <h1 className="text-3xl font-bold text-white tracking-tight">Payment Ledger</h1>
                         <p className="text-gray-400 mt-1">Dashboard style analytics and expense tracking.</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button 
-                            onClick={() => handleOpenModal('add')}
-                            className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-lg shadow-primary/30 font-medium transition-all"
-                        >
-                            <Plus size={20} /> Add Expense
-                        </button>
-                    </div>
                 </div>
 
                 {loading ? (
-                    <div className="flex justify-center items-center py-20">
-                        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    </div>
+                    <>
+                        {/* Skeleton for dashboard cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="card bg-gray-900/50 border-gray-800 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-gray-800/50">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-14 h-14 bg-gray-800 rounded-xl animate-pulse"></div>
+                                        <div>
+                                            <div className="h-3 w-20 bg-gray-800 rounded animate-pulse mb-2"></div>
+                                            <div className="h-7 w-24 bg-gray-800 rounded animate-pulse"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        {/* Skeleton for breakdown */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                            <div className="lg:col-span-2 bg-gray-900/30 border border-gray-800 rounded-2xl p-6">
+                                <div className="h-5 w-48 bg-gray-800 rounded animate-pulse mb-6"></div>
+                                <div className="space-y-6">
+                                    <div><div className="h-4 w-full bg-gray-800 rounded animate-pulse mb-2"></div><div className="h-3 w-full bg-gray-800 rounded-full animate-pulse"></div></div>
+                                    <div><div className="h-4 w-full bg-gray-800 rounded animate-pulse mb-2"></div><div className="h-3 w-full bg-gray-800 rounded-full animate-pulse"></div></div>
+                                </div>
+                            </div>
+                            <div className="bg-gray-900/30 border border-gray-800 rounded-2xl p-6 flex flex-col items-center justify-center">
+                                <div className="w-16 h-16 bg-gray-800 rounded-full animate-pulse mb-4"></div>
+                                <div className="h-5 w-32 bg-gray-800 rounded animate-pulse mb-2"></div>
+                                <div className="h-10 w-28 bg-gray-800 rounded animate-pulse"></div>
+                            </div>
+                        </div>
+                        {/* Skeleton for expenses table */}
+                        <div className="bg-gray-900/30 border border-gray-800 rounded-2xl overflow-hidden">
+                            <div className="p-6 border-b border-gray-800 flex justify-between items-center">
+                                <div className="h-5 w-32 bg-gray-800 rounded animate-pulse"></div>
+                                <div className="h-9 w-28 bg-gray-800 rounded-lg animate-pulse"></div>
+                            </div>
+                            {[...Array(3)].map((_, i) => (
+                                <div key={i} className="flex items-center gap-4 p-4 border-b border-gray-800/50">
+                                    <div className="h-4 w-28 bg-gray-800 rounded animate-pulse"></div>
+                                    <div className="h-5 w-16 bg-gray-800 rounded-full animate-pulse"></div>
+                                    <div className="h-4 w-20 bg-gray-800 rounded animate-pulse"></div>
+                                    <div className="h-4 w-16 bg-gray-800 rounded animate-pulse"></div>
+                                    <div className="flex gap-2 ml-auto"><div className="h-7 w-7 bg-gray-800 rounded-lg animate-pulse"></div><div className="h-7 w-7 bg-gray-800 rounded-lg animate-pulse"></div><div className="h-7 w-7 bg-gray-800 rounded-lg animate-pulse"></div></div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
                 ) : (
                     <>
                         {/* TOP DASHBOARD CARDS (Current Month) */}
@@ -287,8 +341,6 @@ const PaymentLedger = () => {
                             </div>
                         </div>
 
-                        {/* REMINDERS SECTION REMOVED */}
-
                         {/* EXPENSES LIST */}
                         <div className="bg-gray-900/30 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-sm">
                             <div className="p-6 border-b border-gray-800 flex justify-between items-center">
@@ -296,6 +348,12 @@ const PaymentLedger = () => {
                                     <FileText size={20} className="text-primary" />
                                     Expenses List
                                 </h3>
+                                <button 
+                                    onClick={() => handleOpenModal('add')}
+                                    className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg shadow-primary/30 font-medium transition-all text-sm"
+                                >
+                                    <Plus size={16} /> Add Expense
+                                </button>
                             </div>
                             <div className="overflow-x-auto max-h-[400px] overflow-y-auto custom-scrollbar">
                                 <table className="w-full text-left">
@@ -413,6 +471,21 @@ const PaymentLedger = () => {
                                         <p className="text-gray-300 text-sm leading-relaxed">{formData.note}</p>
                                     </div>
                                 )}
+                                {currentExpense?.billImage && (
+                                    <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800">
+                                        <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Attached Bill</p>
+                                        <a 
+                                            href={`${(import.meta.env.VITE_API_URL || 'http://localhost:5001/api').replace('/api', '')}${currentExpense.billImage}`} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 w-full p-3 bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all group"
+                                        >
+                                            <ImageIcon size={18} />
+                                            <span className="text-sm font-bold">View Bill Document</span>
+                                            <ExternalLink size={14} className="ml-auto opacity-50 group-hover:opacity-100" />
+                                        </a>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="space-y-5">
@@ -474,6 +547,37 @@ const PaymentLedger = () => {
                                         value={formData.note}
                                         onChange={(e) => setFormData({...formData, note: e.target.value})}
                                     />
+                                </div>
+
+                                <div>
+                                    <label className="block text-gray-400 text-xs font-semibold uppercase tracking-wider mb-2">Attach Bill (Optional)</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="file" 
+                                            accept="image/*"
+                                            onChange={(e) => setBillFile(e.target.files[0])}
+                                            className="hidden" 
+                                            id="bill-upload"
+                                        />
+                                        <label 
+                                            htmlFor="bill-upload"
+                                            className="flex items-center justify-center gap-2 w-full bg-gray-900 border border-gray-800 border-dashed rounded-lg py-4 px-4 text-gray-400 cursor-pointer hover:border-primary hover:text-primary transition-all"
+                                        >
+                                            <ImageIcon size={20} />
+                                            <span className="text-sm font-medium">
+                                                {billFile ? billFile.name : 'Upload Bill/Receipt Image'}
+                                            </span>
+                                        </label>
+                                        {billFile && (
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setBillFile(null)}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-rose-500"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 
                                 <button 

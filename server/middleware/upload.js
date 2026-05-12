@@ -39,4 +39,22 @@ const uploadLogo = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-module.exports = { uploadLogo };
+const billStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join(__dirname, '..', 'uploads', 'bills');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const extension = path.extname(file.originalname);
+    cb(null, `bill-${Date.now()}${extension}`);
+  }
+});
+
+const uploadBill = multer({
+  storage: billStorage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+module.exports = { uploadLogo, uploadBill };

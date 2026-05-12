@@ -5,28 +5,57 @@ import { toast } from 'react-toastify';
 import { Clock, History, X } from 'lucide-react';
 import ClientCard from '../../components/ClientCard';
 import ClientDetail from './ClientDetail';
+import PaymentModal from '../../components/PaymentModal';
 
 const Expired = () => {
     const navigate = useNavigate();
     const [clients, setClients] = useState([]);
+    const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewClientId, setViewClientId] = useState(null);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [selectedClientForRenewal, setSelectedClientForRenewal] = useState(null);
 
-    const fetchExpiredClients = async () => {
+    const fetchData = async () => {
+        setLoading(true);
         try {
-            const res = await api.get('/overdue/expired');
-            setClients(res.data.data);
+            const [expiredRes, plansRes] = await Promise.all([
+                api.get('/overdue/expired'),
+                api.get('/plan')
+            ]);
+            setClients(expiredRes.data.data);
+            setPlans(plansRes.data.data);
         } catch(e) {
-            toast.error("Failed to load expired clients");
+            toast.error("Failed to load data");
         }
         setLoading(false);
     };
 
-    useEffect(() => { fetchExpiredClients(); }, []);
+    useEffect(() => { fetchData(); }, []);
 
     const handleRenew = (client) => {
-        // Navigate to payments page with client pre-selected and renewal modal open
-        navigate('/owner/transactions', { state: { showPaymentModal: true, client } });
+        setSelectedClientForRenewal(client);
+        setShowPaymentModal(true);
+    };
+
+    const handleRenewalSave = async (paymentData) => {
+        try {
+            // 1. Record payment
+            await api.post('/payment', paymentData);
+            
+            // 2. Reactivate client if they were inactive (or just to ensure status update)
+            if (selectedClientForRenewal.status === 'inactive') {
+                await api.put(`/client/${selectedClientForRenewal._id}/reactivate`);
+            }
+            
+            toast.success("Membership renewed successfully");
+            setShowPaymentModal(false);
+            setSelectedClientForRenewal(null);
+            fetchData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to renew membership");
+            throw error;
+        }
     };
 
     const handleView = (client) => {
@@ -95,6 +124,17 @@ const Expired = () => {
                         </div>
                     </div>
                 </div>
+            )}
+            {/* Payment Modal */}
+            {showPaymentModal && selectedClientForRenewal && (
+                <PaymentModal
+                    isOpen={showPaymentModal}
+                    onClose={() => { setShowPaymentModal(false); setSelectedClientForRenewal(null); }}
+                    onSave={handleRenewalSave}
+                    clientData={selectedClientForRenewal}
+                    lockClient={true}
+                    plans={plans}
+                />
             )}
         </div>
     );
