@@ -11,11 +11,11 @@ const planStatusStyles = {
 
 const paymentStatusStyles = {
   paid: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
-  partial: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+  partial: 'bg-red-500/10 text-red-400 border border-red-500/20', // Changed to red for Dues
   overdue: 'bg-red-500/10 text-red-400 border border-red-500/20',
 };
 
-const ClientCard = ({ client, onView, onDelete, onRenew, onReactivate, showRenew = false, showReactivate = false, hideStatus = false }) => {
+const ClientCard = ({ client, onView, onDelete, onRenew, onReactivate, onDuesClick, showRenew = false, showReactivate = false, hideStatus = false, deleteLabel = "Deactivate" }) => {
   const name = client?.personalInfo?.name || 'Client';
   const avatarText = client?.avatar || name.charAt(0).toUpperCase();
   
@@ -82,8 +82,11 @@ const ClientCard = ({ client, onView, onDelete, onRenew, onReactivate, showRenew
                 {planStatus}
               </span>
               {paymentStatus !== 'paid' && (
-                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase whitespace-nowrap text-center ${paymentStatusStyles[paymentStatus]}`}>
-                  {paymentStatus === 'overdue' ? 'Payment Overdue ⚠️' : 'Partial Paid'}
+                <span 
+                  onClick={(e) => { e.stopPropagation(); onDuesClick?.(client); }}
+                  className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase whitespace-nowrap text-center cursor-pointer transition-transform active:scale-95 ${paymentStatusStyles[paymentStatus]}`}
+                >
+                  Dues
                 </span>
               )}
             </div>
@@ -110,7 +113,7 @@ const ClientCard = ({ client, onView, onDelete, onRenew, onReactivate, showRenew
 
           {onDelete && (
             <Button type="button" variant="secondary" onClick={(e) => { e.stopPropagation(); onDelete?.(client); }} className="!px-3 !py-1.5 text-xs text-red-400 border-red-500/20 hover:border-red-400 hover:text-red-300">
-              <Trash2 size={14} /> Deactivate
+              <Trash2 size={14} /> {deleteLabel}
             </Button>
           )}
         </div>

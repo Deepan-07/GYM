@@ -14,7 +14,7 @@ const paymentStatusConfig = {
     overdue: { color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', label: 'Payment Overdue ⚠️' },
 };
 
-const ClientProfileHeader = ({ client, compact = false }) => {
+const ClientProfileHeader = ({ client, compact = false, showStatus = true }) => {
     if (!client) return null;
 
     const currentPlan = client?.memberships?.find(p => getPlanStatus(p) === 'Active') || client.membership;
@@ -42,16 +42,18 @@ const ClientProfileHeader = ({ client, compact = false }) => {
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-3 mb-2">
                             <h4 className="font-black text-white text-xl lowercase leading-none tracking-tight group-hover:text-primary transition-colors truncate">{name}</h4>
-                            <div className="flex gap-2">
-                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border bg-opacity-10 shrink-0 ${pStatus.bg} ${pStatus.color} ${pStatus.border}`}>
-                                    {pStatus.label}
-                                </span>
-                                {paymentStatus !== 'paid' && (
-                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border bg-opacity-10 shrink-0 ${payStatus.bg} ${payStatus.color} ${payStatus.border}`}>
-                                        {payStatus.label}
+                            {showStatus && (
+                                <div className="flex gap-2">
+                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border bg-opacity-10 shrink-0 ${pStatus.bg} ${pStatus.color} ${pStatus.border}`}>
+                                        {pStatus.label}
                                     </span>
-                                )}
-                            </div>
+                                    {paymentStatus !== 'paid' && (
+                                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border bg-opacity-10 shrink-0 ${payStatus.bg} ${payStatus.color} ${payStatus.border}`}>
+                                            {payStatus.label}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-gray-400">
@@ -94,14 +96,16 @@ const ClientProfileHeader = ({ client, compact = false }) => {
                         <h1 className="text-3xl font-extrabold text-white tracking-tight leading-none truncate">
                             {name}
                         </h1>
-                        <div className="flex gap-2">
-                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${pStatus.bg} ${pStatus.color} ${pStatus.border}`}>
-                                Plan: {pStatus.label}
-                            </span>
-                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${payStatus.bg} ${payStatus.color} ${payStatus.border}`}>
-                                Payment: {payStatus.label}
-                            </span>
-                        </div>
+                        {showStatus && (
+                            <div className="flex gap-2">
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${pStatus.bg} ${pStatus.color} ${pStatus.border}`}>
+                                    Plan: {pStatus.label}
+                                </span>
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${payStatus.bg} ${payStatus.color} ${payStatus.border}`}>
+                                    Payment: {payStatus.label}
+                                </span>
+                            </div>
+                        )}
                     </div>
                     
                     <div className="flex flex-wrap gap-y-2 gap-x-6">

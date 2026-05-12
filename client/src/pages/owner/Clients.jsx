@@ -160,7 +160,7 @@ const Clients = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to deactivate this client?')) {
       try {
-        await api.delete(`/client/${id}`);
+        await api.put(`/client/${id}/deactivate`);
         toast.success('Client deactivated');
         fetchClients();
       } catch {
@@ -299,8 +299,24 @@ const Clients = () => {
 
         {/* ── Client list ── */}
         {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="card p-0 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-lg">
+            <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_2fr_1fr_1fr_1fr] gap-2 px-4 py-4 bg-gray-900/80 border-b border-gray-800 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              <div>Client Info</div><div>Mobile No</div><div>Plan</div><div>Duration</div><div>Days Left</div><div>Status</div><div className="text-right">Actions</div>
+            </div>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-4 border-b border-gray-800/50">
+                <div className="w-10 h-10 bg-gray-800 rounded-xl animate-pulse shrink-0"></div>
+                <div className="flex-1 grid grid-cols-[2fr_1fr_1fr_2fr_1fr_1fr_1fr] gap-2 items-center">
+                  <div><div className="h-4 w-24 bg-gray-800 rounded animate-pulse mb-1"></div><div className="h-3 w-16 bg-gray-800 rounded animate-pulse"></div></div>
+                  <div className="h-4 w-20 bg-gray-800 rounded animate-pulse"></div>
+                  <div className="h-4 w-16 bg-gray-800 rounded animate-pulse"></div>
+                  <div className="h-4 w-28 bg-gray-800 rounded animate-pulse"></div>
+                  <div className="h-4 w-10 bg-gray-800 rounded animate-pulse"></div>
+                  <div className="h-5 w-14 bg-gray-800 rounded-full animate-pulse"></div>
+                  <div className="h-7 w-16 bg-gray-800 rounded-lg animate-pulse ml-auto"></div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : filteredClients.length === 0 ? (
           <div className="card bg-gray-900 border-gray-800 text-center py-16 text-gray-400">
@@ -322,13 +338,13 @@ const Clients = () => {
             </div>
             <div className="flex flex-col">
               {filteredClients.map(client => (
-                <div key={client._id} onClick={() => { if (filterStatus === 'Dues') setDuesClient(client); }} className={filterStatus === 'Dues' ? 'cursor-pointer' : ''}>
-                  <ClientCard
-                    client={client}
-                    onView={(c) => navigate(`/owner/clients/${c._id}`)}
-                    onDelete={selected => handleDelete(selected._id)}
-                  />
-                </div>
+                <ClientCard
+                  key={client._id}
+                  client={client}
+                  onView={(c) => navigate(`/owner/clients/${c._id}`)}
+                  onDelete={selected => handleDelete(selected._id)}
+                  onDuesClick={setDuesClient}
+                />
               ))}
             </div>
           </div>
@@ -342,34 +358,42 @@ const Clients = () => {
                 <X size={20} />
               </button>
               
-              <div className="flex flex-col items-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center font-bold text-2xl mb-3">
+              <div className="flex flex-col items-center mb-6 pt-2">
+                <div className="w-20 h-20 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center font-black text-3xl mb-4 border-2 border-red-500/20 shadow-inner">
                   {duesClient.avatar || duesClient.personalInfo?.name.charAt(0).toUpperCase()}
                 </div>
-                <h3 className="text-xl font-bold text-white text-center">{duesClient.personalInfo?.name}</h3>
-                <p className="text-gray-400 text-sm">{duesClient.clientId || 'Pending ID'}</p>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between items-center py-2 border-b border-gray-800">
-                  <span className="text-gray-400 text-sm">Plan</span>
-                  <span className="text-white font-medium">{duesClient.membership?.planName || 'No Plan'}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-gray-800">
-                  <span className="text-gray-400 text-sm">Total Paid</span>
-                  <span className="text-emerald-400 font-medium">₹{duesClient.memberships?.[0]?.totalPaid || 0}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-gray-800">
-                  <span className="text-gray-400 text-sm">Balance</span>
-                  <span className="text-red-400 font-bold">₹{duesClient.memberships?.[0]?.balance || ((duesClient.memberships?.[0]?.finalPrice || 0) - (duesClient.memberships?.[0]?.totalPaid || 0))}</span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-gray-400 text-sm">Deadline Date</span>
-                  <span className="text-white font-medium">{duesClient.memberships?.[0]?.dueDate ? new Date(duesClient.memberships[0].dueDate).toLocaleDateString() : 'N/A'}</span>
+                <h3 className="text-2xl font-black text-white text-center leading-tight mb-1">{duesClient.personalInfo?.name}</h3>
+                <p className="text-gray-500 font-mono text-sm uppercase tracking-tighter mb-3">{duesClient.clientId || 'ABC-XX'}</p>
+                <div className="flex flex-col items-center gap-1 opacity-80">
+                  <p className="text-gray-400 text-sm font-medium">{duesClient.personalInfo?.mobileNo}</p>
+                  <p className="text-gray-500 text-xs truncate max-w-[200px]">{duesClient.personalInfo?.email}</p>
                 </div>
               </div>
 
-              <Button onClick={() => { setDuesClient(null); navigate('/owner/transactions', { state: { showPaymentModal: true, client: duesClient } }); }} className="w-full">
+              <div className="space-y-4 mb-8 bg-gray-800/20 p-4 rounded-xl border border-gray-800/50">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400 font-medium">Plan Name</span>
+                  <span className="text-white font-bold">{duesClient.memberships?.[0]?.planName || duesClient.membership?.planName || 'No Plan'}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400 font-medium">Total Amount</span>
+                  <span className="text-white font-bold">₹{duesClient.memberships?.[0]?.finalPrice || 0}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400 font-medium">Paid Amount</span>
+                  <span className="text-emerald-400 font-bold">₹{duesClient.memberships?.[0]?.totalPaid || 0}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm pt-3 border-t border-gray-800">
+                  <span className="text-gray-400 font-medium">Balance Dues</span>
+                  <span className="text-red-400 font-black text-lg">₹{duesClient.memberships?.[0]?.balance || 0}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-400 font-medium">Due Date</span>
+                  <span className="text-white font-bold">{duesClient.memberships?.[0]?.dueDate ? new Date(duesClient.memberships[0].dueDate).toLocaleDateString('en-GB') : 'N/A'}</span>
+                </div>
+              </div>
+
+              <Button onClick={() => { setDuesClient(null); navigate('/owner/clients-payment', { state: { showPaymentModal: true, client: duesClient } }); }} className="w-full !py-4 text-base font-bold shadow-xl shadow-primary/20">
                 Collect Payment
               </Button>
             </div>

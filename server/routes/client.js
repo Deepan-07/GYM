@@ -17,6 +17,7 @@ router.route('/:id')
   .delete(protect, authorize('owner'), clientController.deleteClient);
 
 router.put('/:id/approve', protect, authorize('owner'), clientController.approveClient);
+router.put('/:id/deactivate', protect, authorize('owner'), clientController.deactivateClient);
 router.put('/:id/reactivate', protect, authorize('owner'), clientController.reactivateClient);
 
 module.exports = router;

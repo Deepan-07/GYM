@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Receipt } from 'lucide-react';
+import { X, Receipt, Search, ChevronDown, Check, Package, AlertTriangle } from 'lucide-react';
 import Button from './Button';
 
 const PaymentModal = ({
@@ -11,10 +11,21 @@ const PaymentModal = ({
     planData,
     clients = [],
     plans = [],
-    initialData = {}
+    payments = [],
+    initialData = {},
+    lockClient = false
 }) => {
     const [selectedClient, setSelectedClient] = useState(clientData);
     const [selectedPlan, setSelectedPlan] = useState(planData);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [planSearchQuery, setPlanSearchQuery] = useState('');
+    const [showClientDropdown, setShowClientDropdown] = useState(false);
+    const [showPlanDropdown, setShowPlanDropdown] = useState(false);
+    const [paymentType, setPaymentType] = useState('full'); // 'full' or 'partial'
+    const dropdownRef = useRef(null);
+    const planDropdownRef = useRef(null);
+    // Track if we auto-detected a pending payment for the selected client
+    const [detectedPendingPayment, setDetectedPendingPayment] = useState(null);
 
     const [formData, setFormData] = useState({
         amount: planData?.price || initialData.amount || 0,
@@ -26,47 +37,154 @@ const PaymentModal = ({
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Reset all state when modal opens/closes
     useEffect(() => {
-        if (clientData) setSelectedClient(clientData);
-        if (planData) {
-            setSelectedPlan(planData);
-            setFormData(prev => ({
-                ...prev,
-                amount: initialData.amount !== undefined ? initialData.amount : planData.price,
-                paidAmount: initialData.paidAmount !== undefined ? initialData.paidAmount : planData.price,
-                dueDate: initialData.dueDate || prev.dueDate,
-                startDate: initialData.startDate || prev.startDate
-            }));
+        if (isOpen) {
+            // Reset detected pending payment when modal freshly opens
+            if (!clientData && !initialData.id) {
+                setDetectedPendingPayment(null);
+                setSelectedClient(null);
+                setSelectedPlan(null);
+                setSearchQuery('');
+                setPlanSearchQuery('');
+                setPaymentType('full');
+                setIsSubmitting(false);
+                setFormData({
+                    amount: 0,
+                    paidAmount: 0,
+                    paymentMethod: 'cash',
+                    dueDate: '',
+                    startDate: new Date().toISOString().split('T')[0]
+                });
+            }
+            if (clientData) {
+                setSelectedClient(clientData);
+                setSearchQuery(clientData.personalInfo?.name || clientData.name || '');
+            }
+            if (planData) {
+                setSelectedPlan(planData);
+                setPlanSearchQuery(planData.name || '');
+                setFormData(prev => ({
+                    ...prev,
+                    amount: initialData.amount !== undefined ? initialData.amount : planData.price,
+                    paidAmount: initialData.paidAmount !== undefined ? initialData.paidAmount : planData.price,
+                    dueDate: initialData.dueDate || prev.dueDate,
+                    startDate: initialData.startDate || prev.startDate
+                }));
+                if (initialData.paidAmount !== undefined && initialData.paidAmount < (initialData.amount || planData.price)) {
+                    setPaymentType('partial');
+                } else {
+                    setPaymentType('full');
+                }
+            }
         }
-    }, [clientData, planData]);
+    }, [clientData, planData, isOpen]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setShowClientDropdown(false);
+            }
+            if (planDropdownRef.current && !planDropdownRef.current.contains(event.target)) {
+                setShowPlanDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     if (!isOpen) return null;
 
-    const handleClientChange = (clientId) => {
-        const client = clients.find(c => c._id === clientId);
+    const filteredClients = clients.filter(c => {
+        const name = (c.personalInfo?.name || c.name || '').toLowerCase();
+        const id = (c.clientId || '').toLowerCase();
+        const query = searchQuery.toLowerCase();
+        return name.includes(query) || id.includes(query);
+    });
+
+    const filteredPlans = plans.filter(p => {
+        const name = (p.name || '').toLowerCase();
+        const query = planSearchQuery.toLowerCase();
+        return name.includes(query);
+    });
+
+    const handleClientSelect = (client) => {
+        if (lockClient) return;
         setSelectedClient(client);
+        setSearchQuery(client.personalInfo?.name || client.name);
+        setShowClientDropdown(false);
+
+        // Check if this client has any unpaid/partial payment
+        if (payments.length > 0 && !initialData.id) {
+            const pendingPayment = [...payments]
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .find(p => p.clientId === client._id && p.status !== 'paid');
+
+            if (pendingPayment) {
+                // Auto-switch to update mode
+                setDetectedPendingPayment(pendingPayment);
+                const balance = pendingPayment.amount - (pendingPayment.paidAmount || 0);
+                const plan = plans.find(p => p._id === pendingPayment.planId);
+                if (plan) {
+                    setSelectedPlan(plan);
+                    setPlanSearchQuery(plan.name);
+                }
+                setFormData(prev => ({
+                    ...prev,
+                    amount: balance,
+                    paidAmount: '',
+                    dueDate: pendingPayment.dueDate ? new Date(pendingPayment.dueDate).toISOString().split('T')[0] : '',
+                    startDate: pendingPayment.startDate ? new Date(pendingPayment.startDate).toISOString().split('T')[0] : prev.startDate
+                }));
+                setPaymentType('partial');
+                return;
+            }
+        }
+
+        // No pending payment found - reset to new payment mode
+        setDetectedPendingPayment(null);
 
         // Auto-select client's active plan if available
         if (client?.membership?.planId) {
             const planId = typeof client.membership.planId === 'object' ? client.membership.planId._id : client.membership.planId;
             const plan = plans.find(p => p._id === planId);
-            if (plan) handlePlanChange(plan._id);
+            if (plan) handlePlanSelect(plan);
         }
     };
 
-    const handlePlanChange = (planId) => {
-        const plan = plans.find(p => p._id === planId);
+    const handlePlanSelect = (plan) => {
         setSelectedPlan(plan);
-        if (plan) {
+        setPlanSearchQuery(plan.name);
+        setShowPlanDropdown(false);
+        setFormData(prev => ({
+            ...prev,
+            amount: plan.price,
+            paidAmount: paymentType === 'full' ? plan.price : prev.paidAmount
+        }));
+    };
+
+    const handlePaymentTypeChange = (type) => {
+        setPaymentType(type);
+        if (type === 'full') {
             setFormData(prev => ({
                 ...prev,
-                amount: plan.price,
-                paidAmount: plan.price
+                paidAmount: prev.amount,
+                dueDate: ''
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                paidAmount: '', // Clear paid amount for partial
+                dueDate: ''
             }));
         }
     };
 
-    const balance = formData.amount - formData.paidAmount;
+    const balance = formData.amount - (Number(formData.paidAmount) || 0);
+
+    // Determine if we're in update mode (either from initialData or auto-detected)
+    const isUpdateMode = !!(initialData.id || detectedPendingPayment);
+    const activePaymentId = initialData.id || detectedPendingPayment?._id;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -76,12 +194,18 @@ const PaymentModal = ({
         if (!selectedClient) return alert("Please select a client");
         if (!selectedPlan) return alert("Please select a plan");
 
+        const paid = Number(formData.paidAmount) || 0;
+
         // Validations
-        if (formData.paidAmount > formData.amount) {
-            return alert(`Paid amount cannot exceed total amount (₹${formData.amount})`);
+        if (paid > formData.amount) {
+            const errorMsg = isUpdateMode
+                ? `You cannot pay more than the outstanding balance of ₹${formData.amount}`
+                : `You cannot pay more than the plan price of ₹${formData.amount}`;
+            alert(errorMsg);
+            return;
         }
 
-        if (balance > 0 && !formData.dueDate) {
+        if (paymentType === 'partial' && !formData.dueDate) {
             return alert("Due Date is required for partial payments");
         }
 
@@ -89,10 +213,14 @@ const PaymentModal = ({
         try {
             await onSave({
                 ...formData,
+                paidAmount: paid,
                 clientId: selectedClient._id,
                 planId: selectedPlan._id,
                 planName: selectedPlan.name,
-                balance
+                status: paymentType === 'full' ? 'paid' : 'partial',
+                balance,
+                _isUpdate: isUpdateMode,
+                _paymentId: activePaymentId
             });
             onClose();
         } catch (error) {
@@ -103,74 +231,181 @@ const PaymentModal = ({
 
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-300">
-            <div className="bg-gray-900 border border-gray-700/50 rounded-xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-                <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-900/50">
+            <div className="bg-gray-900 border border-gray-700/50 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
+                <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-900/50 shrink-0">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <Receipt className="text-primary" />
-                        {initialData.id ? 'Update Payment' : 'Record Payment'}
+                        {lockClient ? 'Renew Membership' : isUpdateMode ? 'Update Payment' : 'Record Payment'}
                     </h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" disabled={isSubmitting}>
                         <X size={24} />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    {/* Selection Section */}
-                    <div className="space-y-4 bg-gray-800/30 p-4 rounded-lg border border-gray-700/30">
-                        <div>
-                            <label className="block text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Select Client</label>
-                            {clientData ? (
-                                <p className="text-white font-medium p-2.5 bg-gray-800 rounded-lg border border-gray-700/50">{clientData.personalInfo?.name || clientData.name}</p>
+                <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1 custom-scrollbar">
+                    {/* Pending Payment Banner */}
+                    {detectedPendingPayment && (
+                        <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
+                            <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
+                            <div>
+                                <p className="text-amber-400 text-sm font-bold">Pending Balance Detected</p>
+                                <p className="text-gray-400 text-xs mt-1">
+                                    This client has an outstanding balance of <span className="text-white font-bold">₹{detectedPendingPayment.amount - (detectedPendingPayment.paidAmount || 0)}</span> for <span className="text-white font-medium">{detectedPendingPayment.planName}</span>. Pay the remaining amount below.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Client Selection (Searchable) */}
+                    <div className="space-y-4">
+                        <div className="relative" ref={dropdownRef}>
+                            <label className="block text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1.5 ml-1">
+                                {lockClient ? 'Selected Client' : 'Search Client'}
+                            </label>
+                            {selectedClient ? (
+                                <div className={`flex items-center gap-3 p-3 bg-gray-800/50 border rounded-xl transition-all ${lockClient ? 'border-primary/30 bg-primary/5' : 'border-gray-700'}`}>
+                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                        {(selectedClient.personalInfo?.name || selectedClient.name || 'C').charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-white font-bold text-sm">{selectedClient.personalInfo?.name || selectedClient.name}</p>
+                                        <p className="text-[10px] text-primary font-black uppercase tracking-tighter">{selectedClient.clientId}</p>
+                                    </div>
+                                    {!lockClient && !clientData && (
+                                        <button type="button" onClick={() => { setSelectedClient(null); setSearchQuery(''); }} className="p-1 text-gray-500 hover:text-white transition-colors">
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
                             ) : (
-                                <select
-                                    className="w-full bg-dark border border-gray-700 rounded-lg p-2.5 text-white focus:border-primary outline-none transition-all"
-                                    onChange={(e) => handleClientChange(e.target.value)}
-                                    value={selectedClient?._id || ''}
-                                    required
-                                >
-                                    <option value="">Choose Client...</option>
-                                    {clients.map(c => (
-                                        <option key={c._id} value={c._id}>{c.personalInfo?.name || c.name}</option>
-                                    ))}
-                                </select>
+                                <>
+                                    <div className="relative group">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={18} />
+                                        <input
+                                            type="text"
+                                            className="w-full bg-dark border border-gray-700 rounded-xl pl-11 pr-4 py-3.5 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder-gray-600 font-medium"
+                                            placeholder="Type Client Name or ID (e.g. NEX-C-01)"
+                                            value={searchQuery}
+                                            onChange={(e) => {
+                                                setSearchQuery(e.target.value);
+                                                setShowClientDropdown(true);
+                                            }}
+                                            onFocus={() => setShowClientDropdown(true)}
+                                        />
+                                        <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 transition-transform duration-300 ${showClientDropdown ? 'rotate-180' : ''}`} size={18} />
+                                    </div>
+
+                                    {showClientDropdown && (
+                                        <div className="absolute z-[10000] left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2 duration-200">
+                                            {filteredClients.length > 0 ? (
+                                                filteredClients.map(c => (
+                                                    <button
+                                                        key={c._id}
+                                                        type="button"
+                                                        className="w-full flex items-center justify-between p-3.5 hover:bg-gray-700/50 transition-colors text-left border-b border-gray-700/50 last:border-0 group"
+                                                        onClick={() => handleClientSelect(c)}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center text-gray-400 group-hover:bg-primary/20 group-hover:text-primary transition-colors font-bold text-xs">
+                                                                {(c.personalInfo?.name || c.name || 'C').charAt(0).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold text-gray-200 group-hover:text-white transition-colors">{c.personalInfo?.name || c.name}</p>
+                                                                <p className="text-[10px] font-black text-gray-500 group-hover:text-primary transition-colors uppercase tracking-tighter">{c.clientId}</p>
+                                                            </div>
+                                                        </div>
+                                                        {selectedClient?._id === c._id && <Check size={16} className="text-primary" />}
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="p-8 text-center text-gray-500 text-sm italic">No matching clients found</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
 
-                        <div>
-                            <label className="block text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Select Plan</label>
-                            {planData ? (
-                                <p className="text-primary font-bold p-2.5 bg-gray-800 rounded-lg border border-gray-700/50">{planData.name}</p>
+                        {/* Plan Selection (Searchable) */}
+                        <div className="relative" ref={planDropdownRef}>
+                            <label className="block text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1.5 ml-1">Search Membership Plan</label>
+                            {(planData || detectedPendingPayment) ? (
+                                <div className={`flex items-center gap-3 p-3 bg-gray-800/50 border rounded-xl ${detectedPendingPayment ? 'border-amber-500/30' : 'border-gray-700'}`}>
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                        <Package size={18} />
+                                    </div>
+                                    <div>
+                                        <p className="text-white font-bold text-sm">{selectedPlan?.name || planData?.name}</p>
+                                        <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest">₹{selectedPlan?.price || planData?.price}</p>
+                                    </div>
+                                </div>
                             ) : (
-                                <select
-                                    className="w-full bg-dark border border-gray-700 rounded-lg p-2.5 text-white focus:border-primary outline-none transition-all"
-                                    onChange={(e) => handlePlanChange(e.target.value)}
-                                    value={selectedPlan?._id || ''}
-                                    required
-                                    disabled={!selectedClient}
-                                >
-                                    <option value="">Choose Plan...</option>
-                                    {plans.map(p => (
-                                        <option key={p._id} value={p._id}>{p.name} (₹{p.price})</option>
-                                    ))}
-                                </select>
+                                <>
+                                    <div className="relative group">
+                                        <Package className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={18} />
+                                        <input
+                                            type="text"
+                                            disabled={!selectedClient}
+                                            className="w-full bg-dark border border-gray-700 rounded-xl pl-11 pr-4 py-3.5 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder-gray-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                            placeholder="Type Plan Name (e.g. Monthly, Yearly)"
+                                            value={planSearchQuery}
+                                            onChange={(e) => {
+                                                setPlanSearchQuery(e.target.value);
+                                                setShowPlanDropdown(true);
+                                            }}
+                                            onFocus={() => setShowPlanDropdown(true)}
+                                        />
+                                        <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 transition-transform duration-300 ${showPlanDropdown ? 'rotate-180' : ''}`} size={18} />
+                                    </div>
+
+                                    {showPlanDropdown && (
+                                        <div className="absolute z-[10000] left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2 duration-200">
+                                            {filteredPlans.length > 0 ? (
+                                                filteredPlans.map(p => (
+                                                    <button
+                                                        key={p._id}
+                                                        type="button"
+                                                        className="w-full flex items-center justify-between p-3.5 hover:bg-gray-700/50 transition-colors text-left border-b border-gray-700/50 last:border-0 group"
+                                                        onClick={() => handlePlanSelect(p)}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg bg-gray-900 flex items-center justify-center text-gray-400 group-hover:bg-primary/20 group-hover:text-primary transition-colors font-bold text-xs">
+                                                                <Package size={16} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold text-gray-200 group-hover:text-white transition-colors">{p.name}</p>
+                                                            </div>
+                                                        </div>
+                                                        {selectedPlan?._id === p._id && <Check size={16} className="text-primary" />}
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="p-8 text-center text-gray-500 text-sm italic">No matching plans found</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Total Amount (₹)</label>
-                            <input
-                                type="number"
-                                readOnly
-                                className="w-full bg-gray-800/50 border border-gray-800 rounded-lg p-3 text-gray-300 outline-none cursor-not-allowed"
-                                value={formData.amount}
-                            />
+                            <label className="block text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1.5 ml-1">Total Amount</label>
+                            <div className="relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">₹</span>
+                                <input
+                                    type="number"
+                                    readOnly
+                                    className="w-full bg-gray-800/30 border border-gray-800 rounded-xl pl-8 pr-4 py-3 text-white font-bold outline-none cursor-not-allowed"
+                                    value={formData.amount}
+                                />
+                            </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Payment Method</label>
+                            <label className="block text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1.5 ml-1">Payment Method</label>
                             <select
-                                className="w-full bg-dark border border-gray-700 rounded-lg p-3 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                                className="w-full bg-dark border border-gray-700 rounded-xl p-3 text-white font-bold focus:border-primary outline-none transition-all appearance-none"
                                 value={formData.paymentMethod}
                                 onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
                                 disabled={isSubmitting}
@@ -182,35 +417,76 @@ const PaymentModal = ({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Payment Completion Type */}
+                    <div className="bg-gray-800/20 p-4 rounded-xl border border-gray-800 space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Paid Amount (₹)</label>
-                            <input
-                                type="number"
-                                required
-                                min="0"
-                                max={formData.amount}
-                                className="w-full bg-dark border border-gray-700 rounded-lg p-3 text-white focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
-                                value={formData.paidAmount}
-                                onChange={(e) => setFormData({ ...formData, paidAmount: Number(e.target.value) })}
-                                disabled={isSubmitting}
-                            />
-                            <p className={`text-[10px] mt-1 font-bold uppercase tracking-wider ${balance > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                Balance: ₹{balance.toFixed(2)}
-                            </p>
+                            <label className="block text-[10px] text-gray-500 uppercase font-black tracking-widest mb-2 ml-1">Payment Completion Type</label>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handlePaymentTypeChange('full')}
+                                    className={`flex-1 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${paymentType === 'full' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-dark text-gray-500 border border-gray-700 hover:border-gray-600'}`}
+                                >
+                                    Fully Paid
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handlePaymentTypeChange('partial')}
+                                    className={`flex-1 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${paymentType === 'partial' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-dark text-gray-500 border border-gray-700 hover:border-gray-600'}`}
+                                >
+                                    Partially Paid
+                                </button>
+                            </div>
                         </div>
-                        <div>
-                            <label className={`block text-sm font-medium mb-1 ${balance > 0 ? 'text-amber-400' : 'text-gray-400'}`}>
-                                Due Date {balance > 0 && <span className="text-red-500">*</span>}
-                            </label>
-                            <input
-                                type="date"
-                                required={balance > 0}
-                                className={`w-full bg-dark border rounded-lg p-3 text-white outline-none transition-all ${balance > 0 ? 'border-amber-500/50 focus:border-amber-500' : 'border-gray-700 focus:border-primary'}`}
-                                value={formData.dueDate}
-                                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                                disabled={isSubmitting || balance === 0}
-                            />
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-[10px] text-gray-400 uppercase font-black tracking-widest mb-1.5 ml-1">Paid Amount (₹)</label>
+                                <input
+                                    type="number"
+                                    required
+                                    min="0"
+                                    max={formData.amount}
+                                    className={`w-full bg-dark border rounded-xl p-3 text-white font-bold focus:border-primary outline-none transition-all ${paymentType === 'full' ? 'opacity-50 cursor-not-allowed border-gray-800' : 'border-gray-700'}`}
+                                    value={formData.paidAmount}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        // Allow empty string or numbers within range
+                                        if (val === '' || (Number(val) >= 0 && Number(val) <= formData.amount)) {
+                                            setFormData({ ...formData, paidAmount: val });
+                                        }
+                                    }}
+                                    disabled={isSubmitting || paymentType === 'full'}
+                                    placeholder="Enter amount"
+                                />
+                                <p className="text-[10px] text-gray-500 mt-1.5 ml-1 font-bold uppercase tracking-tight">
+                                    Max Allowed: <span className="text-primary">₹{formData.amount}</span> 
+                                    {isUpdateMode ? ' (Balance)' : ' (Plan Price)'}
+                                </p>
+                                {paymentType === 'partial' && (
+                                    <p className="text-[10px] mt-1.5 font-bold uppercase tracking-widest text-rose-500 flex justify-between px-1">
+                                        <span>Balance Due:</span>
+                                        <span>₹{balance.toFixed(2)}</span>
+                                    </p>
+                                )}
+                            </div>
+                            <div>
+                                {paymentType === 'partial' && (
+                                    <>
+                                        <label className="block text-[10px] text-amber-500 uppercase font-black tracking-widest mb-1.5 ml-1 animate-in fade-in slide-in-from-bottom-1">
+                                            Due Date <span className="text-rose-500">*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            required={paymentType === 'partial'}
+                                            className="w-full bg-dark border border-amber-500/50 rounded-xl p-3 text-white font-bold outline-none focus:border-amber-500 transition-all animate-in fade-in slide-in-from-bottom-1"
+                                            value={formData.dueDate}
+                                            onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                                            disabled={isSubmitting}
+                                        />
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -218,7 +494,7 @@ const PaymentModal = ({
                         <Button
                             type="button"
                             variant="secondary"
-                            className="flex-1"
+                            className="flex-1 py-3.5 text-xs font-black uppercase tracking-widest"
                             onClick={onClose}
                             disabled={isSubmitting}
                         >
@@ -226,11 +502,11 @@ const PaymentModal = ({
                         </Button>
                         <Button
                             type="submit"
-                            className="flex-1"
+                            className={`flex-1 py-3.5 text-xs font-black uppercase tracking-widest ${paymentType === 'full' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20' : 'bg-primary shadow-primary/20'}`}
                             isLoading={isSubmitting}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || !selectedClient || !selectedPlan}
                         >
-                            {isSubmitting ? 'Processing...' : 'Save Payment'}
+                            {isSubmitting ? 'Processing...' : 'Confirm Payment'}
                         </Button>
                     </div>
                 </form>
@@ -241,5 +517,6 @@ const PaymentModal = ({
 };
 
 export default PaymentModal;
+
 
 

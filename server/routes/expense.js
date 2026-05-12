@@ -8,15 +8,17 @@ const {
   deleteExpense
 } = require('../controllers/expenseController');
 
+const { uploadBill } = require('../middleware/upload');
+
 router.use(protect);
 router.use(authorize('owner'));
 
 router.route('/')
   .get(getExpenses)
-  .post(createExpense);
+  .post(uploadBill.single('billImage'), createExpense);
 
 router.route('/:id')
-  .put(updateExpense)
+  .put(uploadBill.single('billImage'), updateExpense)
   .delete(deleteExpense);
 
 module.exports = router;
