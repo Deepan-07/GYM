@@ -310,7 +310,7 @@ const Dues = () => {
                                                     </div>
                                                 </div>
                                             </td>
-                                            {activeTab === 'expiredd' && (
+                                            {activeTab === 'expired' && (
                                                 <td className="p-4 text-gray-300 text-sm font-medium">
                                                     {due.mobile}
                                                 </td>
