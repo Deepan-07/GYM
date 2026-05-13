@@ -7,8 +7,12 @@ const paymentSchema = new mongoose.Schema({
   clientName: { type: String },
   planId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan' },
   planName: { type: String },
-  amount: { type: Number, required: true },
+  amount: { type: Number },
   paidAmount: { type: Number },
+  invoiceAmount: { type: Number }, // Original total price of the plan
+  paidNow: { type: Number }, // Amount paid in THIS transaction
+  totalPaid: { type: Number }, // Cumulative amount paid for this membership so far
+  remainingBalance: { type: Number }, // Remaining balance after this transaction
   status: { type: String, enum: ['pending', 'partial', 'paid', 'overdue'] },
   paymentMethod: { type: String, enum: ['cash', 'upi', 'card'] },
   mode: { type: String }, // For backward compatibility
