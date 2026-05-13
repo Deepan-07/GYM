@@ -60,9 +60,23 @@ const generateClientId = async (gymIdStr) => {
 };
 
 const generatePaymentId = async (gymId, billingPrefix) => {
-  const paymentsCount = await Payment.countDocuments({ gymId });
-  const count = paymentsCount + 1;
-  const paddedCount = count.toString().padStart(4, '0');
+  // Use a more robust way to find the next ID than just countDocuments
+  // Find the highest existing number for this gym's prefix
+  const lastPayment = await Payment.findOne({ 
+    gymId, 
+    paymentId: new RegExp(`^${billingPrefix}-`) 
+  }).sort({ paymentId: -1 });
+
+  let nextNum = 1;
+  if (lastPayment && lastPayment.paymentId) {
+    const parts = lastPayment.paymentId.split('-');
+    const lastNum = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(lastNum)) {
+      nextNum = lastNum + 1;
+    }
+  }
+
+  const paddedCount = nextNum.toString().padStart(4, '0');
   return `${billingPrefix}-${paddedCount}`;
 };
 

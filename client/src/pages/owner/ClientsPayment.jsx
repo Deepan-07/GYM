@@ -18,7 +18,6 @@ const Transactions = () => {
     
     // Modal states
     const [showModal, setShowModal] = useState(false);
-    const [showUpdateModal, setShowUpdateModal] = useState(false);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [showClientDetailModal, setShowClientDetailModal] = useState(false);
     
@@ -64,15 +63,14 @@ const Transactions = () => {
     }, []);
 
     useEffect(() => {
-        if (location.state?.showPaymentModal && location.state?.client && clients.length > 0 && payments.length > 0) {
+        if (location.state?.showPaymentModal && location.state?.client && clients.length > 0) {
             const existingUnpaid = [...payments]
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                 .find(p => p.clientId === location.state.client._id && p.status !== 'paid');
 
             if (existingUnpaid) {
                 setSelectedPayment(existingUnpaid);
-                setAdditionalAmount('');
-                setShowUpdateModal(true);
+                setShowModal(true);
                 navigate(location.pathname, { replace: true });
             } else {
                 const client = clients.find(c => c._id === location.state.client._id);
@@ -130,13 +128,20 @@ const Transactions = () => {
     };
 
 
-    const getPaidAmount = (p) => p.paidAmount !== undefined ? p.paidAmount : p.amount;
-    const getBalance = (p) => p.amount - getPaidAmount(p);
+    const getPaidAmount = (p) => {
+        const val = p.paidAmount !== undefined ? p.paidAmount : p.amount;
+        return Number(val) || 0;
+    };
+    const getBalance = (p) => {
+        if (p.amount === 0) return 0; // Installment record, doesn't carry a balance itself
+        const total = Number(p.amount) || 0;
+        return Math.max(0, total - getPaidAmount(p));
+    };
 
     const getStatusBadge = (status) => {
-        if (!status || status === 'paid') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">PAID</span>;
-        if (status === 'partial') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20">PARTIAL</span>;
-        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20 uppercase">OVERDUE</span>;
+        if (!status || status === 'paid') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-widest">PAID</span>;
+        if (status === 'partial') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-widest">PARTIAL</span>;
+        return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20 uppercase tracking-widest">OVERDUE</span>;
     };
 
     const getClientDisplayId = (mongoId) => {
@@ -166,9 +171,10 @@ const Transactions = () => {
                                     <th className="p-5">Client Info</th>
                                     <th className="p-5">Plan</th>
                                     <th className="p-5">Mode</th>
-                                    <th className="p-5 text-right">Total</th>
-                                    <th className="p-5 text-right">Paid</th>
-                                    <th className="p-5 text-right">Balance</th>
+                                    <th className="p-5 text-right">Invoice Amount</th>
+                                    <th className="p-5 text-right">Paid Now</th>
+                                    <th className="p-5 text-right">Total Paid</th>
+                                    <th className="p-5 text-right">Remaining Balance</th>
                                     <th className="p-5 text-center">Status</th>
                                     <th className="p-5 text-center">Bill</th>
                                     <th className="p-5 text-center">Actions</th>
@@ -211,9 +217,10 @@ const Transactions = () => {
                                                     {payment.paymentMethod || payment.mode || 'cash'}
                                                 </span>
                                             </td>
-                                            <td className="p-5 text-right text-gray-200 font-bold text-sm">₹{payment.amount}</td>
-                                            <td className="p-5 text-right text-emerald-400 font-bold text-sm">₹{getPaidAmount(payment)}</td>
-                                            <td className="p-5 text-right text-rose-500 font-bold text-sm">₹{getBalance(payment)}</td>
+                                            <td className="p-5 text-right text-gray-200 font-bold text-sm">₹{payment.invoiceAmount || payment.amount || 0}</td>
+                                            <td className="p-5 text-right text-blue-400 font-bold text-sm">₹{payment.paidNow || payment.paidAmount || 0}</td>
+                                            <td className="p-5 text-right text-emerald-400 font-bold text-sm">₹{payment.totalPaid || payment.paidAmount || 0}</td>
+                                            <td className="p-5 text-right text-rose-500 font-bold text-sm">₹{payment.remainingBalance !== undefined ? payment.remainingBalance : (payment.amount - (payment.paidAmount || 0))}</td>
                                             <td className="p-5 text-center">
                                                 {getStatusBadge(payment.status)}
                                                 {payment.status === 'partial' && payment.dueDate && (
@@ -312,9 +319,10 @@ const Transactions = () => {
                                 <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Method</p><p className="font-bold uppercase">{selectedPayment.paymentMethod || 'CASH'}</p></div>
                             </div>
                             <div className="bg-gray-50 rounded-xl p-4 space-y-2 border border-gray-100">
-                                <div className="flex justify-between text-sm"><span className="text-gray-500">Total Billable</span><span className="font-bold">₹{selectedPayment.amount}</span></div>
-                                <div className="flex justify-between text-sm"><span className="text-gray-500">Amount Paid</span><span className="font-bold text-emerald-600">₹{getPaidAmount(selectedPayment)}</span></div>
-                                <div className="flex justify-between pt-2 border-t border-gray-200"><span className="font-black uppercase text-xs tracking-wider">Balance Due</span><span className="font-black text-rose-600">₹{getBalance(selectedPayment)}</span></div>
+                                <div className="flex justify-between text-sm"><span className="text-gray-500">Invoice Amount</span><span className="font-bold">₹{selectedPayment.invoiceAmount || selectedPayment.amount || 0}</span></div>
+                                <div className="flex justify-between text-sm"><span className="text-gray-500">Amount Paid Now</span><span className="font-bold text-blue-600">₹{selectedPayment.paidNow || selectedPayment.paidAmount || 0}</span></div>
+                                <div className="flex justify-between text-sm pt-1"><span className="text-gray-500 text-xs">Cumulative Paid</span><span className="font-bold text-emerald-600 text-xs">₹{selectedPayment.totalPaid || selectedPayment.paidAmount || 0}</span></div>
+                                <div className="flex justify-between pt-2 border-t border-gray-200"><span className="font-black uppercase text-xs tracking-wider">Remaining Balance</span><span className="font-black text-rose-600">₹{selectedPayment.remainingBalance !== undefined ? selectedPayment.remainingBalance : (selectedPayment.amount - (selectedPayment.paidAmount || 0))}</span></div>
                             </div>
                         </div>
                         <div className="p-8 bg-gray-50 text-center"><p className="text-xs text-gray-400 font-medium italic">Thank you for your business!</p></div>

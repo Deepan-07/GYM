@@ -17,8 +17,15 @@ const ClientDetail = ({ clientId: propClientId, onClose, simplified = false }) =
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState(null);
 
-    const getPaidAmount = (p) => p.paidAmount !== undefined ? p.paidAmount : p.amount;
-    const getBalance = (p) => p.amount - getPaidAmount(p);
+    const getPaidAmount = (p) => {
+        const paid = p.paidAmount !== undefined ? p.paidAmount : p.amount;
+        return Number(paid) || 0;
+    };
+    const getBalance = (p) => {
+        if (p.amount === 0) return 0; // Installment record, doesn't carry a balance itself
+        const total = Number(p.amount) || 0;
+        return Math.max(0, total - getPaidAmount(p));
+    };
 
     const getStatusBadge = (status) => {
         if (!status || status === 'paid') return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">PAID</span>;
@@ -123,8 +130,7 @@ const ClientDetail = ({ clientId: propClientId, onClose, simplified = false }) =
                             </div>
 
                             {/* Membership Details */}
-                            {!simplified && (
-                                <div className="card bg-gray-900 border-gray-800">
+                            <div className="card bg-gray-900 border-gray-800">
                                     <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2 border-b border-gray-800 pb-4">
                                         <Calendar size={20} className="text-accent" /> Membership Lifecycle
                                     </h3>
@@ -267,7 +273,6 @@ const ClientDetail = ({ clientId: propClientId, onClose, simplified = false }) =
                                         })()}
                                     </div>
                                 </div>
-                            )}
                         </div>
                     ) : (
                         <div className="card bg-gray-900/40 border-gray-800 p-0 overflow-hidden shadow-2xl backdrop-blur-sm">
@@ -297,17 +302,17 @@ const ClientDetail = ({ clientId: propClientId, onClose, simplified = false }) =
                                                 <tr key={payment._id} className="hover:bg-gray-800/30 transition-all group">
                                                     <td className="px-6 py-4">
                                                         <p className="font-bold text-white text-sm">#{payment.paymentId}</p>
-                                                        <p className="text-[10px] text-gray-500 mt-0.5">{new Date(payment.createdAt || payment.date).toLocaleDateString('en-GB')}</p>
+                                                        <p className="text-[10px] text-gray-500 mt-0.5">{new Date(payment.createdAt || payment.date || payment.paymentDate).toLocaleDateString('en-GB')}</p>
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <span className="text-gray-300 text-xs font-medium">{payment.planName}</span>
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${payment.mode === 'cash' ? 'text-emerald-400 bg-emerald-400/5' : 'text-blue-400 bg-blue-400/5'}`}>
-                                                            {payment.mode || 'cash'}
+                                                        <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${(payment.paymentMethod || payment.mode || 'cash') === 'cash' ? 'text-emerald-400 bg-emerald-400/5' : 'text-blue-400 bg-blue-400/5'}`}>
+                                                            {payment.paymentMethod || payment.mode || 'cash'}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-4 text-right text-gray-200 font-bold text-sm">₹{payment.amount}</td>
+                                                    <td className="px-6 py-4 text-right text-gray-200 font-bold text-sm">₹{payment.amount || 0}</td>
                                                     <td className="px-6 py-4 text-right text-emerald-400 font-bold text-sm">₹{getPaidAmount(payment)}</td>
                                                     <td className="px-6 py-4 text-right text-rose-500 font-bold text-sm">₹{getBalance(payment)}</td>
                                                     <td className="px-6 py-4 text-center">{getStatusBadge(payment.status)}</td>
@@ -355,8 +360,8 @@ const ClientDetail = ({ clientId: propClientId, onClose, simplified = false }) =
                             <div className="grid grid-cols-2 gap-y-4">
                                 <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Client Name</p><p className="font-bold">{client.personalInfo.name}</p></div>
                                 <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Plan Name</p><p className="font-bold">{selectedPayment.planName}</p></div>
-                                <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</p><p className="font-bold">{new Date(selectedPayment.createdAt || selectedPayment.date).toLocaleDateString('en-GB')}</p></div>
-                                <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Method</p><p className="font-bold uppercase">{selectedPayment.mode || 'CASH'}</p></div>
+                                <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</p><p className="font-bold">{new Date(selectedPayment.createdAt || selectedPayment.date || selectedPayment.paymentDate).toLocaleDateString('en-GB')}</p></div>
+                                <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Method</p><p className="font-bold uppercase">{selectedPayment.paymentMethod || selectedPayment.mode || 'CASH'}</p></div>
                             </div>
                             <div className="bg-gray-50 rounded-xl p-4 space-y-2 border border-gray-100">
                                 <div className="flex justify-between text-sm"><span className="text-gray-500">Total Billable</span><span className="font-bold">₹{selectedPayment.amount}</span></div>

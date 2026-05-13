@@ -6,6 +6,19 @@ import { useNavigate } from 'react-router-dom';
 import ClientForm from '../../components/ClientForm';
 import ClientDetail from './ClientDetail';
 import PaymentModal from '../../components/PaymentModal';
+import { calculateDaysLeft, formatDisplayDate, getPlanStatus } from '../../utils/membership';
+
+const planStatusStyles = {
+  Active: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+  Upcoming: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+  Expired: 'bg-gray-500/10 text-gray-400 border border-gray-700/50',
+};
+
+const paymentStatusStyles = {
+  paid: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+  partial: 'bg-red-500/10 text-red-400 border border-red-500/20',
+  overdue: 'bg-red-500/10 text-red-400 border border-red-500/20',
+};
 
 const StatCard = ({ title, value, icon, color }) => (
   <div className={`card relative overflow-hidden group`}>
@@ -31,41 +44,74 @@ const ClientDashboardTable = ({ clients, onView }) => (
             <thead>
                 <tr className="bg-gray-800/40 text-gray-500 uppercase text-[10px] font-bold tracking-widest border-b border-gray-800">
                     <th className="px-6 py-4">Client Info</th>
-                    <th className="px-6 py-4">Contact Info</th>
+                    <th className="px-6 py-4">Plan</th>
+                    <th className="px-6 py-4">Duration</th>
+                    <th className="px-6 py-4">Days Left</th>
+                    <th className="px-6 py-4">Status</th>
                     <th className="px-6 py-4 text-right">Action</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/50">
-                {clients.map(client => (
-                    <tr key={client._id} className="hover:bg-white/[0.02] transition-colors group">
-                        <td className="px-6 py-4">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-base border border-primary/20 shrink-0 shadow-inner group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                                    {client.personalInfo?.name?.charAt(0).toUpperCase()}
+                {clients.map(client => {
+                    const currentPlan = client?.memberships?.find(p => {
+                        const s = getPlanStatus(p);
+                        return s === 'Active';
+                    }) || (client?.membership?.startDate ? client.membership : null);
+                    
+                    const planStatus = currentPlan ? getPlanStatus(currentPlan) : 'Expired';
+                    const paymentStatus = client?.paymentStatus || 'paid';
+                    const dynamicDaysLeft = calculateDaysLeft(currentPlan?.startDate, currentPlan?.endDate);
+                    const daysLeft = dynamicDaysLeft !== null ? dynamicDaysLeft : '-';
+
+                    return (
+                        <tr key={client._id} className="hover:bg-white/[0.02] transition-colors group">
+                            <td className="px-6 py-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-base border border-primary/20 shrink-0 shadow-inner group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                                        {client.personalInfo?.name?.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-white font-bold truncate group-hover:text-primary transition-colors">{client.personalInfo?.name}</span>
+                                        <span className="text-gray-500 text-[10px] font-mono tracking-tighter uppercase">{client.clientId || 'N/A'}</span>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className="text-white font-bold truncate group-hover:text-primary transition-colors">{client.personalInfo?.name}</span>
-                                    <span className="text-gray-500 text-[10px] font-mono tracking-tighter uppercase">{client.clientId || 'N/A'}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <span className="text-gray-300 text-sm font-medium">{currentPlan?.planName || 'No Active Plan'}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="flex flex-col">
+                                    <span className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Start: {formatDisplayDate(currentPlan?.startDate)}</span>
+                                    <span className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">End: {formatDisplayDate(currentPlan?.endDate)}</span>
                                 </div>
-                            </div>
-                        </td>
-                        <td className="px-6 py-4">
-                            <div className="flex flex-col min-w-0">
-                                <span className="text-gray-300 text-sm font-medium">{client.personalInfo?.mobileNo}</span>
-                                <span className="text-gray-500 text-xs truncate opacity-60">{client.personalInfo?.email || 'N/A'}</span>
-                            </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                            <button 
-                                onClick={() => onView(client)}
-                                className="p-2 bg-gray-800 text-gray-400 hover:text-white hover:bg-primary rounded-lg transition-all shadow-lg border border-gray-700/50"
-                                title="View Details"
-                            >
-                                <Eye size={16} />
-                            </button>
-                        </td>
-                    </tr>
-                ))}
+                            </td>
+                            <td className="px-6 py-4">
+                                <span className="text-white font-bold">{daysLeft}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="flex flex-col gap-1 items-start">
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase whitespace-nowrap text-center ${planStatusStyles[planStatus]}`}>
+                                        {planStatus}
+                                    </span>
+                                    {paymentStatus !== 'paid' && (
+                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase whitespace-nowrap text-center ${paymentStatusStyles[paymentStatus]}`}>
+                                            Dues
+                                        </span>
+                                    )}
+                                </div>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                                <button 
+                                    onClick={() => onView(client)}
+                                    className="p-2 bg-gray-800 text-gray-400 hover:text-white hover:bg-primary rounded-lg transition-all shadow-lg border border-gray-700/50"
+                                    title="View Details"
+                                >
+                                    <Eye size={16} />
+                                </button>
+                            </td>
+                        </tr>
+                    );
+                })}
             </tbody>
         </table>
     </div>

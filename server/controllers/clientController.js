@@ -13,6 +13,9 @@ const calculateBalances = (clientDoc, preFetchedPayments = []) => {
   // Filter payments for this specific client
   const clientPayments = preFetchedPayments.filter(p => p.clientId?.toString() === client._id.toString());
 
+  // Attach full payment objects to paymentHistory, sorted by newest first
+  client.paymentHistory = clientPayments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
   if (client.memberships && Array.isArray(client.memberships)) {
     client.memberships = client.memberships.map(m => {
       // Find all payments belonging to this membership period

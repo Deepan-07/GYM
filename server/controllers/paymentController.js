@@ -120,6 +120,10 @@ exports.recordPayment = async (req, res, next) => {
       planName: planName || activatedPlan.planName, 
       amount: numAmount,
       paidAmount: safePaidAmount,
+      invoiceAmount: numAmount,
+      paidNow: safePaidAmount,
+      totalPaid: safePaidAmount,
+      remainingBalance: Math.max(0, numAmount - safePaidAmount),
       status: paymentStatus,
       paymentMethod,
       mode: paymentMethod,
@@ -155,7 +159,24 @@ exports.recordPayment = async (req, res, next) => {
 exports.getPayments = async (req, res, next) => {
   try {
     let gymIdStr = req.userRole === 'owner' ? req.user.gymId : req.query.gymId;
-    const payments = await Payment.find({ gymId: gymIdStr }).sort({ createdAt: -1 });
+    const rawPayments = await Payment.find({ gymId: gymIdStr }).sort({ createdAt: -1 });
+    
+    // On-the-fly migration for old records
+    const payments = rawPayments.map(p => {
+      const obj = p.toObject();
+      // If amount is 0 (old installment logic) and invoiceAmount is missing
+      if ((obj.amount === 0 || !obj.invoiceAmount) && obj.paidAmount > 0) {
+        // Try to reconstruct based on available data
+        // For display purposes, we'll try to find the anchor if needed, 
+        // but for now, we'll just ensure it doesn't show 0 if it's meant to be an invoice
+        if (!obj.invoiceAmount) obj.invoiceAmount = obj.amount || obj.paidAmount;
+        if (!obj.paidNow) obj.paidNow = obj.paidAmount;
+        if (!obj.totalPaid) obj.totalPaid = obj.paidAmount;
+        if (obj.remainingBalance === undefined) obj.remainingBalance = Math.max(0, obj.invoiceAmount - obj.totalPaid);
+      }
+      return obj;
+    });
+
     res.status(200).json({ success: true, count: payments.length, data: payments });
   } catch (err) {
     next(err);
@@ -179,40 +200,82 @@ exports.updatePayment = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Additional amount must be greater than zero' });
     }
 
-    payment.paidAmount += addedAmount;
+    // 1. Generate new Payment ID for this transaction
+    const gym = await Gym.findOne({ gymId: gymIdStr });
+    if (!gym) return res.status(404).json({ success: false, message: 'Gym not found' });
+    
+    const newPaymentId = await generatePaymentId(gymIdStr, gym.billingInfo?.billingIdPrefix || 'BILL');
 
-    if (payment.paidAmount >= payment.amount) {
-      payment.paidAmount = payment.amount;
-      payment.status = 'paid';
-    } else {
-      payment.status = 'partial';
-    }
+    // 2. Create a NEW payment record (Installment transaction)
+    const invAmt = payment.invoiceAmount || payment.amount || 0;
+    const currentTotalPaid = (payment.totalPaid || payment.paidAmount || 0) + addedAmount;
+    const currentBalance = Math.max(0, invAmt - currentTotalPaid);
 
+    const newTransaction = await Payment.create({
+      paymentId: newPaymentId,
+      gymId: gymIdStr,
+      clientId: payment.clientId,
+      clientName: payment.clientName,
+      planId: payment.planId,
+      planName: payment.planName,
+      amount: invAmt, // Store original total as requested
+      paidAmount: addedAmount,
+      invoiceAmount: invAmt,
+      paidNow: addedAmount,
+      totalPaid: currentTotalPaid,
+      remainingBalance: currentBalance,
+      status: currentBalance === 0 ? 'paid' : 'partial',
+      paymentMethod: payment.paymentMethod || 'cash',
+      mode: payment.paymentMethod || 'cash',
+      paymentDate: new Date(),
+      startDate: payment.startDate,
+      isPlanActivated: false,
+      date: new Date()
+    });
+
+    // 3. Update the original payment's totals and status (Anchor record)
+    payment.totalPaid = currentTotalPaid;
+    payment.remainingBalance = currentBalance;
+    payment.paidAmount = currentTotalPaid; // Sync legacy field
+    payment.status = currentBalance === 0 ? 'paid' : 'partial';
     await payment.save();
 
-    // Sync back to client memberships
+    // 4. Sync back to client document
     const client = await Client.findById(payment.clientId);
-    if (client && client.memberships) {
-      // Find the membership matching this payment's plan and start date
-      const mIdx = client.memberships.findIndex(m => 
-        m.planId.toString() === payment.planId.toString() && 
-        new Date(m.startDate).getTime() === new Date(payment.startDate).getTime()
-      );
+    if (client) {
+      // Add the new transaction to history
+      if (!client.paymentHistory) client.paymentHistory = [];
+      client.paymentHistory.push(newTransaction._id);
 
-      if (mIdx !== -1) {
-        client.memberships[mIdx].totalPaid += addedAmount;
-        // Also update legacy field if it matches
-        if (client.membership && client.membership.planId.toString() === payment.planId.toString()) {
-          client.membership.totalPaid = (client.membership.totalPaid || 0) + addedAmount;
+      if (client.memberships && Array.isArray(client.memberships)) {
+        // Find the membership matching this payment's plan and start date
+        const mIdx = client.memberships.findIndex(m => 
+          m.planId && payment.planId &&
+          m.planId.toString() === payment.planId.toString() && 
+          new Date(m.startDate).getTime() === new Date(payment.startDate).getTime()
+        );
+
+        if (mIdx !== -1) {
+          client.memberships[mIdx].totalPaid = (client.memberships[mIdx].totalPaid || 0) + addedAmount;
+          
+          // Update legacy field if it matches
+          if (client.membership && client.membership.planId && payment.planId && 
+              client.membership.planId.toString() === payment.planId.toString()) {
+            client.membership.totalPaid = (client.membership.totalPaid || 0) + addedAmount;
+          }
         }
-        await client.save();
       }
+      await client.save();
     }
 
     await syncClientStatus(payment.clientId);
 
-    res.status(200).json({ success: true, data: payment });
+    res.status(200).json({ success: true, data: newTransaction });
   } catch (err) {
+    console.error("UPDATE PAYMENT ERROR:", err);
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ success: false, message: err.message });
+    }
     next(err);
   }
 };
