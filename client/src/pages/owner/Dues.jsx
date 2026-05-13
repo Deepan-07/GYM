@@ -131,8 +131,8 @@ const Dues = () => {
 
         if (searchTerm) {
             const query = searchTerm.toLowerCase();
-            return list.filter(due => 
-                due.clientName?.toLowerCase().includes(query) || 
+            return list.filter(due =>
+                due.clientName?.toLowerCase().includes(query) ||
                 due.clientIdDisplay?.toLowerCase().includes(query)
             );
         }
@@ -171,7 +171,7 @@ const Dues = () => {
                 // It's an update to an existing partial payment
                 // We pass the BALANCE as the total amount in PaymentModal, so paidAmount here is the additional amount
                 const additionalAmount = Number(paymentData.paidAmount);
-                
+
                 if (additionalAmount <= 0) {
                     setShowModal(false);
                     return;
@@ -182,14 +182,14 @@ const Dues = () => {
             } else if (isRenewing) {
                 // Renewal logic
                 await api.post('/payment', paymentData);
-                
+
                 // Automatically reactivate if client is inactive or just ensure status update
                 // The server usually updates status on payment if it's a new plan or renewal
                 // But specifically for inactive clients, we might need a reactivate call if they were manually deactivated
                 if (selectedDue.rawClient?.status === 'inactive') {
                     await api.put(`/client/${selectedDue.clientId}/reactivate`);
                 }
-                
+
                 toast.success("Membership renewed successfully");
             } else {
                 // If no payment record found (shouldn't happen with new logic but for safety)
@@ -310,7 +310,7 @@ const Dues = () => {
                                                     </div>
                                                 </div>
                                             </td>
-                                            {activeTab === 'expired' && (
+                                            {activeTab === 'expiredd' && (
                                                 <td className="p-4 text-gray-300 text-sm font-medium">
                                                     {due.mobile}
                                                 </td>
