@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Receipt, Search, ChevronDown, Check, Package, AlertTriangle } from 'lucide-react';
+import { X, Receipt, Search, ChevronDown, Check, Package, AlertTriangle, Calendar, ArrowRight } from 'lucide-react';
 import Button from './Button';
+import { formatDisplayDate, calculateEndDate } from '../utils/membership';
 
 const PaymentModal = ({
     isOpen,
@@ -26,6 +27,7 @@ const PaymentModal = ({
     const planDropdownRef = useRef(null);
     // Track if we auto-detected a pending payment for the selected client
     const [detectedPendingPayment, setDetectedPendingPayment] = useState(null);
+    const [latestExpiryDate, setLatestExpiryDate] = useState(null);
 
     const [formData, setFormData] = useState({
         amount: planData?.price || initialData.amount || 0,
@@ -143,6 +145,47 @@ const PaymentModal = ({
 
         // No pending payment found - reset to new payment mode
         setDetectedPendingPayment(null);
+
+        // Calculate latest expiry date for start date handling
+        if (client.memberships && client.memberships.length > 0) {
+            const sortedMemberships = [...client.memberships].sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
+            const latest = sortedMemberships[0].endDate;
+            if (latest && new Date(latest) >= new Date().setHours(0,0,0,0)) {
+                setLatestExpiryDate(latest);
+                const nextDay = new Date(latest);
+                nextDay.setDate(nextDay.getDate() + 1);
+                setFormData(prev => ({
+                    ...prev,
+                    startDate: nextDay.toISOString().split('T')[0]
+                }));
+            } else {
+                setLatestExpiryDate(null);
+                setFormData(prev => ({
+                    ...prev,
+                    startDate: new Date().toISOString().split('T')[0]
+                }));
+            }
+        } else if (client.membership?.endDate) {
+            // Check legacy field
+            const latest = client.membership.endDate;
+             if (latest && new Date(latest) >= new Date().setHours(0,0,0,0)) {
+                setLatestExpiryDate(latest);
+                const nextDay = new Date(latest);
+                nextDay.setDate(nextDay.getDate() + 1);
+                setFormData(prev => ({
+                    ...prev,
+                    startDate: nextDay.toISOString().split('T')[0]
+                }));
+            } else {
+                setLatestExpiryDate(null);
+            }
+        } else {
+            setLatestExpiryDate(null);
+            setFormData(prev => ({
+                ...prev,
+                startDate: new Date().toISOString().split('T')[0]
+            }));
+        }
 
         // Auto-select client's active plan if available
         if (client?.membership?.planId) {
@@ -387,6 +430,59 @@ const PaymentModal = ({
                                 </>
                             )}
                         </div>
+
+                        {/* Membership Scheduling (ONLY for NEW memberships) */}
+                        {!isUpdateMode && selectedPlan && (
+                            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Calendar className="text-primary" size={16} />
+                                    <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Membership Scheduling</h3>
+                                </div>
+
+                                {latestExpiryDate && (
+                                    <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                                        <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={14} />
+                                        <p className="text-[10px] text-amber-200 font-medium leading-relaxed">
+                                            Client has an active/upcoming plan expiring on <span className="text-white font-bold">{formatDisplayDate(latestExpiryDate)}</span>. 
+                                            The new membership will start automatically after this.
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1.5 ml-1">Start Date</label>
+                                        <input
+                                            type="date"
+                                            required
+                                            min={latestExpiryDate ? (() => {
+                                                const d = new Date(latestExpiryDate);
+                                                d.setDate(d.getDate() + 1);
+                                                return d.toISOString().split('T')[0];
+                                            })() : new Date().toISOString().split('T')[0]}
+                                            className="w-full bg-dark border border-gray-700 rounded-xl p-3 text-white font-bold focus:border-primary outline-none transition-all"
+                                            value={formData.startDate}
+                                            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[10px] text-gray-500 uppercase font-black tracking-widest mb-1.5 ml-1">Calculated Expiry</label>
+                                        <div className="w-full bg-gray-800/30 border border-gray-800 rounded-xl p-3 text-emerald-400 font-bold flex items-center justify-between">
+                                            <span>{formatDisplayDate(calculateEndDate(formData.startDate, selectedPlan.durationMonths))}</span>
+                                            <ArrowRight size={14} className="opacity-30" />
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <p className="text-[9px] text-gray-500 italic ml-1">
+                                    Status: {new Date(formData.startDate).setHours(0,0,0,0) === new Date().setHours(0,0,0,0) ? 
+                                        <span className="text-emerald-500 font-bold uppercase tracking-widest">Active Today</span> : 
+                                        <span className="text-blue-500 font-bold uppercase tracking-widest">Upcoming (Scheduled)</span>
+                                    }
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
