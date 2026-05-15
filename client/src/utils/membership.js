@@ -143,3 +143,10 @@ export const getClientPlans = (memberships, today = new Date()) => {
     gaps
   };
 };
+
+export const calculateEndDate = (startDate, durationMonths) => {
+  if (!startDate || !durationMonths) return null;
+  const date = new Date(startDate);
+  date.setMonth(date.getMonth() + Number(durationMonths));
+  return date;
+};

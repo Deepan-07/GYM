@@ -56,12 +56,8 @@ const assignOrRenewPlan = async (client, planId, startDateStr, paymentData = {})
   if (!client.memberships) client.memberships = [];
   client.memberships.push(newPlan);
 
-  // Update primary membership field for backward compatibility (set to the most relevant plan)
-  // Usually the one that just got added or the current active one
-  client.membership = {
-    ...newPlan,
-    requestApproved: true
-  };
+  // Note: client.membership (primary field) will be updated via syncClientStatus
+  // called at the end of the recordPayment flow.
   
   return newPlan;
 };

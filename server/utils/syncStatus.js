@@ -39,6 +39,25 @@ const syncClientStatus = async (clientId) => {
       client.paymentStatus = 'paid';
     }
 
+    // 2. Synchronize Membership (Automatic Continuation)
+    // Find the currently active plan, or the next upcoming one if no active exists
+    const { currentPlan, nextPlan } = require('./membership').getClientPlans(client.memberships || []);
+    
+    if (currentPlan) {
+      client.membership = {
+        ...currentPlan,
+        requestApproved: true
+      };
+    } else if (nextPlan && (!client.membership || new Date(client.membership.endDate) < new Date())) {
+      // If no active plan, but we have an upcoming one, and the previous one is expired
+      // Note: We don't necessarily make it 'Active' here, the getPlanStatus will handle it dynamically.
+      // But we update the primary field to point to the next relevant plan.
+      client.membership = {
+        ...nextPlan,
+        requestApproved: true
+      };
+    }
+
     await client.save();
     return client;
   } catch (error) {
